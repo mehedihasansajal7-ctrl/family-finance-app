@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Wallet body -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,38h40a7,7 0 0 1 7,7v18a7,7 0 0 1 -7,7h-40a7,7 0 0 1 -7,-7v-18a7,7 0 0 1 7,-7z" />
+    <!-- Wallet flap -->
+    <path
+        android:fillColor="#D7F2E9"
+        android:pathData="M34,38h40a7,7 0 0 1 7,7v5h-54v-5a7,7 0 0 1 7,-7z" />
+    <!-- Clasp -->
+    <path
+        android:fillColor="#0F5F53"
+        android:pathData="M63,50h14a5,5 0 0 1 5,5v2a5,5 0 0 1 -5,5h-14a6,6 0 0 1 0,-12z" />
+    <!-- Coin -->
+    <path
+        android:fillColor="#F2B705"
+        android:pathData="M45,57.5m-6.5,0a6.5,6.5 0 1,0 13,0a6.5,6.5 0 1,0 -13,0" />
+</vector>

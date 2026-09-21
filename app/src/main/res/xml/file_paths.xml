@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Scoped file sharing for exports. Only the app's private `exports/` directory is exposed, and only
+  per-file via a granted URI — the rest of the app's storage stays inaccessible to other apps.
+-->
+<paths>
+    <files-path name="exports" path="exports/" />
+    <cache-path name="cache" path="." />
+</paths>

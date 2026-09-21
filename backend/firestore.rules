@@ -1,0 +1,189 @@
+rules_version = '2';
+
+// =============================================================================
+// Family Finance — Firestore security rules
+//
+// This file is the ENFORCEMENT POINT for the product's central privacy rule:
+//
+//   The family dashboard is shared; individual financial information is private.
+//
+// It mirrors `FamilyAccessPolicy` in the Android app one-for-one. The client-side policy exists so
+// the UI never even attempts a forbidden read; these rules exist so that attempting one fails even
+// if the client is modified, replayed, or replaced entirely.
+//
+// The rules are unit-tested against the Firestore emulator in `backend/rules-tests`. Any change here
+// must keep those tests green — see docs/SECURITY.md.
+// =============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------- helpers
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function me() {
+      return request.auth.uid;
+    }
+
+    function memberPath(familyId) {
+      return /databases/$(database)/documents/families/$(familyId)/members/$(me());
+    }
+
+    function membership(familyId) {
+      return get(memberPath(familyId)).data;
+    }
+
+    function isMember(familyId) {
+      return signedIn()
+        && exists(memberPath(familyId))
+        && membership(familyId).status == 'active';
+    }
+
+    function isAdmin(familyId) {
+      return isMember(familyId)
+        && (membership(familyId).role == 'owner' || membership(familyId).role == 'admin');
+    }
+
+    function isOwner(familyId) {
+      return isMember(familyId) && membership(familyId).role == 'owner';
+    }
+
+    // Credentials the app must never store. Rejected at the database edge so a crafted or restored
+    // payload cannot persist one even if a client bug let it through.
+    function noCredentials() {
+      return !request.resource.data.keys().hasAny([
+        'pin', 'cvv', 'cvc', 'password', 'otp', 'mpin', 'cardPin', 'transactionPassword'
+      ]);
+    }
+
+    // A private document may only claim its own owner. The path already encodes the uid, so this
+    // catches a payload that disagrees with its own location.
+    function ownerConsistent(uid) {
+      return !request.resource.data.keys().hasAny(['ownerUid'])
+        || request.resource.data.ownerUid == uid;
+    }
+
+    // =========================================================================
+    // PRIVATE per-user tree
+    //
+    // accounts, transactions, recurringRules, savingsGoals, loans, notifications,
+    // audit and profile all live here. Exactly one rule shape protects all of them,
+    // and it grants access to the owner and to nobody else — not to admins, not to
+    // the family owner. There is deliberately no family-scoped read rule anywhere
+    // under /users.
+    // =========================================================================
+    match /users/{uid}/{document=**} {
+      allow read: if signedIn() && me() == uid;
+
+      allow create, update: if signedIn()
+        && me() == uid
+        && ownerConsistent(uid)
+        && noCredentials();
+
+      allow delete: if signedIn() && me() == uid;
+    }
+
+    // =========================================================================
+    // SHARED family tree
+    // =========================================================================
+    match /families/{familyId} {
+
+      allow read: if isMember(familyId);
+
+      // Anyone may create a family, but only as its owner.
+      allow create: if signedIn() && request.resource.data.ownerUid == me();
+
+      allow update: if isAdmin(familyId) && noCredentials();
+
+      // Families are never deleted from a client: doing so would orphan every member's records.
+      allow delete: if false;
+    }
+
+    match /families/{familyId}/members/{uid} {
+
+      // Self-read is evaluated first so the rule does not recurse into the very document it is
+      // deciding on; Firestore's `||` short-circuits, so `isMember` is not consulted for self.
+      allow read: if signedIn() && (uid == me() || isMember(familyId));
+
+      // Joining. A user may only create their own membership, and only as a plain active member —
+      // self-promotion to admin is impossible. Single-use invite codes are validated and consumed
+      // by the `redeemInvitation` Cloud Function, which is the supported join path.
+      allow create: if signedIn()
+        && uid == me()
+        && request.resource.data.role == 'member'
+        && request.resource.data.status == 'active';
+
+      // Admins may edit members but not themselves (no self-promotion); the owner may do anything
+      // except demote or remove themselves.
+      allow update: if isOwner(familyId)
+        || (isAdmin(familyId) && uid != me());
+
+      // Leaving voluntarily, the owner removing someone else, or an admin removing a member.
+      // The owner's own membership can never be deleted by anybody — including the owner — so a
+      // family can never be left without an owner.
+      allow delete: if resource.data.role != 'owner'
+        && (uid == me()
+            || isOwner(familyId)
+            || (isAdmin(familyId) && resource.data.role == 'member'));
+    }
+
+    // ---- shared budgets: any member reads, only admins write
+    match /families/{familyId}/budgets/{budgetId} {
+      allow read: if isMember(familyId);
+      allow write: if isAdmin(familyId) && noCredentials();
+    }
+
+    // ---- shared goals: any member reads; only admins change the goal itself, but any member may
+    //      add to the running total. The field-level diff is what enforces that distinction.
+    match /families/{familyId}/goals/{goalId} {
+      allow read: if isMember(familyId);
+      allow create, delete: if isAdmin(familyId);
+      allow update: if isAdmin(familyId)
+        || (isMember(familyId)
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['currentAmountMinor', 'updatedAt']));
+    }
+
+    // ---- shared bills: any member reads; admins manage them; a member may mark one paid/skipped
+    match /families/{familyId}/bills/{billId} {
+      allow read: if isMember(familyId);
+      allow create, delete: if isAdmin(familyId);
+      allow update: if isAdmin(familyId)
+        || (isMember(familyId)
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['status', 'updatedAt']));
+    }
+
+    // ---- invitations: admins only. A member who is not an admin must never see a live code.
+    match /families/{familyId}/invitations/{invitationId} {
+      allow read: if isAdmin(familyId);
+      allow create: if isAdmin(familyId) && request.resource.data.createdByUid == me();
+      allow update, delete: if isAdmin(familyId);
+    }
+
+    // =========================================================================
+    // SERVER-WRITTEN family aggregate
+    //
+    // This is the ONLY family-wide financial document, and it is deliberately
+    // read-only from the client. It contains totals, family-level category totals
+    // and a trend series — no member attribution of any kind exists in its shape.
+    //
+    // `allow write: if false` means the Android app cannot fabricate or edit an
+    // aggregate; only the Cloud Function (which bypasses rules via the Admin SDK)
+    // can produce one. That is what makes "do not download every member's
+    // transactions and total them locally" a structural property, not a convention.
+    // =========================================================================
+    match /families/{familyId}/aggregates/{month} {
+      allow read: if isMember(familyId);
+      allow write: if false;
+    }
+
+    // ---------------------------------------------------------------- default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

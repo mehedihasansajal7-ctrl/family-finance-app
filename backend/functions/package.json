@@ -1,0 +1,18 @@
+{
+  "name": "family-finance-functions",
+  "description": "Server-side aggregate computation and invitation redemption for the Family Finance app.",
+  "private": true,
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "serve": "firebase emulators:start --only functions,firestore,auth,storage",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.2",
+    "firebase-functions": "^6.1.2"
+  }
+}
