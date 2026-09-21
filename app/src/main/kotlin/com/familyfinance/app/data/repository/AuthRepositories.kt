@@ -187,6 +187,7 @@ class LocalDemoAuthRepository @Inject constructor(
     @dagger.hilt.android.qualifiers.ApplicationContext private val context: Context,
     private val session: SessionManager,
     private val seeder: DemoSeeder,
+    private val familyDao: FamilyDao,
     private val time: TimeProvider = TimeProvider.System,
 ) : AuthRepository {
 
@@ -269,14 +270,21 @@ class LocalDemoAuthRepository @Inject constructor(
     )
 
     private suspend fun finishSignIn(uid: String, email: String, displayName: String): Outcome<UserProfile> {
-        // Demo mode ships with a populated household so the dashboard and reports are meaningful.
-        val familyId = seeder.seedFor(uid, displayName)
+        // Seed the showcase household once, for the very first sign-in. Every later sign-in starts
+        // with no family and lands on "Create / Join a family" — which is the real member flow
+        // (invitation code). This is what makes "add a family member" work in demo mode.
+        var familyId: String? = null
+        var role = Role.MEMBER
+        if (familyDao.findAny() == null) {
+            familyId = seeder.seedFor(uid, displayName)
+            role = Role.OWNER
+        }
         val profile = UserProfile(
             uid = uid,
             email = email,
             displayName = displayName,
             familyId = familyId,
-            role = Role.OWNER,
+            role = role,
             status = MemberStatus.ACTIVE,
             createdAt = time.nowMillis(),
             updatedAt = time.nowMillis(),
