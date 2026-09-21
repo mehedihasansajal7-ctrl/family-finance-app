@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Backups are disabled for this app: the local database holds private financial records and
+  encrypted session material. Cloud backup / device transfer would move that data outside the
+  family's control, so both are excluded entirely.
+-->
+<full-backup-content>
+    <exclude domain="database" path="." />
+    <exclude domain="sharedpref" path="." />
+    <exclude domain="file" path="." />
+</full-backup-content>

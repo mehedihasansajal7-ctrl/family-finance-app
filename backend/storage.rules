@@ -1,0 +1,48 @@
+rules_version = '2';
+
+// =============================================================================
+// Family Finance — Cloud Storage rules
+//
+// Receipts and documents are private by default. A file is readable by another family member only
+// when its owner explicitly uploaded it to the shared path.
+// =============================================================================
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Mirrors `isMember` in firestore.rules, evaluated against the family's membership document.
+    function isMember(familyId) {
+      return request.auth != null
+        && firestore.get(
+             /databases/(default)/documents/families/$(familyId)/members/$(request.auth.uid)
+           ).data.status == 'active';
+    }
+
+    function isImageOrPdf() {
+      return request.resource.contentType.matches('image/jpeg')
+          || request.resource.contentType.matches('image/png')
+          || request.resource.contentType.matches('image/webp')
+          || request.resource.contentType.matches('application/pdf');
+    }
+
+    // ---- private receipts: the owner, and only the owner
+    match /users/{uid}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // ---- explicitly shared receipts: readable by the family, still owned by one member
+    match /families/{familyId}/shared/{allPaths=**} {
+      allow read: if isMember(familyId);
+
+      allow write: if isMember(familyId)
+        // Defence in depth against a mislabelled upload becoming an executable payload.
+        && isImageOrPdf()
+        && request.resource.size <= 10 * 1024 * 1024;
+    }
+
+    // ---- everything else is denied
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,45 @@
+# Gradle / Android
+.gradle/
+build/
+local.properties
+.kotlin/
+*.iml
+.idea/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Android Studio
+.navigation/
+lint-results*
+
+# Secrets / external config (never commit)
+#
+# NOTE: app/google-services.json IS committed on purpose. It ships as a placeholder with fake
+# identifiers so the project builds and runs out of the box (demo mode). Google's own guidance is
+# that google-services.json is client configuration, not a secret — the protection comes from API-key
+# restrictions and from the security rules, not from hiding this file. If you drop in a real one and
+# would rather not commit it, add it here and adjust the README accordingly.
+.env
+*.keystore
+*.jks
+serviceAccountKey.json
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Node (backend functions)
+node_modules/
+functions/node_modules/
+rules-tests/node_modules/
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
