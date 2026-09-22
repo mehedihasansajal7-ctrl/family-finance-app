@@ -303,7 +303,7 @@ fun SettingsScreen(
             }
 
             Text(
-                "Family Finance · v1.0.0",
+                "Family Finance · v${com.familyfinance.app.BuildConfig.VERSION_NAME}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

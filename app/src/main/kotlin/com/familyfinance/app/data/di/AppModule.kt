@@ -135,16 +135,6 @@ object AppModule {
         engine = engine,
         time = time,
     )
-
-    @Provides
-    @Singleton
-    fun provideDemoSeeder(
-        familyDao: FamilyDao,
-        accountDao: AccountDao,
-        transactionDao: TransactionDao,
-        familyFinanceDao: FamilyFinanceDao,
-        time: TimeProvider,
-    ): DemoSeeder = DemoSeeder(familyDao, accountDao, transactionDao, familyFinanceDao, time)
 }
 
 @Module

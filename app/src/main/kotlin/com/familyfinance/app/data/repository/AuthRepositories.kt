@@ -186,8 +186,6 @@ class FirebaseAuthRepository @Inject constructor(
 class LocalDemoAuthRepository @Inject constructor(
     @dagger.hilt.android.qualifiers.ApplicationContext private val context: Context,
     private val session: SessionManager,
-    private val seeder: DemoSeeder,
-    private val familyDao: FamilyDao,
     private val time: TimeProvider = TimeProvider.System,
 ) : AuthRepository {
 
@@ -270,21 +268,15 @@ class LocalDemoAuthRepository @Inject constructor(
     )
 
     private suspend fun finishSignIn(uid: String, email: String, displayName: String): Outcome<UserProfile> {
-        // Seed the showcase household once, for the very first sign-in. Every later sign-in starts
-        // with no family and lands on "Create / Join a family" — which is the real member flow
-        // (invitation code). This is what makes "add a family member" work in demo mode.
-        var familyId: String? = null
-        var role = Role.MEMBER
-        if (familyDao.findAny() == null) {
-            familyId = seeder.seedFor(uid, displayName)
-            role = Role.OWNER
-        }
+        // NO sample data is created. A new sign-in starts with no family and lands on
+        // "Create / Join a family", so the app is a clean slate for real (or manual test) data.
+        // The showcase seeder still exists in `data/seed/DemoSeeder.kt` if it is ever wanted back.
         val profile = UserProfile(
             uid = uid,
             email = email,
             displayName = displayName,
-            familyId = familyId,
-            role = role,
+            familyId = null,
+            role = Role.MEMBER,
             status = MemberStatus.ACTIVE,
             createdAt = time.nowMillis(),
             updatedAt = time.nowMillis(),
