@@ -76,6 +76,7 @@ fun MainScaffold(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val showBottomBar = currentRoute in TopLevelDestination.entries.map { it.route }
+    val showAddButton = currentRoute in setOf(Routes.DASHBOARD, Routes.GOALS, Routes.MY_FINANCE)
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -100,7 +101,7 @@ fun MainScaffold(
             }
         },
         floatingActionButton = {
-            if (showBottomBar) {
+            if (showAddButton) {
                 ExtendedFloatingActionButton(
                     onClick = { showAddSheet = true },
                     icon = { Icon(Icons.Default.Add, contentDescription = null) },
