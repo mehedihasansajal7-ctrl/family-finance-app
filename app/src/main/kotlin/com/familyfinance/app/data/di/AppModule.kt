@@ -6,6 +6,7 @@ import com.familyfinance.app.core.util.TimeProvider
 import com.familyfinance.app.data.local.FamilyFinanceDatabase
 import com.familyfinance.app.data.local.dao.AccountDao
 import com.familyfinance.app.data.local.dao.AuditDao
+import com.familyfinance.app.data.local.dao.ChatDao
 import com.familyfinance.app.data.local.dao.FamilyDao
 import com.familyfinance.app.data.local.dao.FamilyFinanceDao
 import com.familyfinance.app.data.local.dao.MaintenanceDao
@@ -24,6 +25,7 @@ import com.familyfinance.app.data.repository.AuditRepositoryImpl
 import com.familyfinance.app.data.repository.AuthRepositoryRouter
 import com.familyfinance.app.data.repository.FamilyFinanceRepositoryImpl
 import com.familyfinance.app.data.repository.FamilyRepositoryImpl
+import com.familyfinance.app.data.repository.ChatRepositoryImpl
 import com.familyfinance.app.data.repository.LocalDemoAuthRepository
 import com.familyfinance.app.data.repository.NotificationRepositoryImpl
 import com.familyfinance.app.data.repository.PersonalFinanceRepositoryImpl
@@ -39,6 +41,7 @@ import com.familyfinance.app.domain.repository.AuditRepository
 import com.familyfinance.app.domain.repository.AuthRepository
 import com.familyfinance.app.domain.repository.FamilyFinanceRepository
 import com.familyfinance.app.domain.repository.FamilyRepository
+import com.familyfinance.app.domain.repository.ChatRepository
 import com.familyfinance.app.domain.repository.NotificationRepository
 import com.familyfinance.app.domain.repository.PersonalFinanceRepository
 import com.familyfinance.app.domain.repository.ProfileRepository
@@ -79,6 +82,7 @@ object AppModule {
     fun provideDatabase(@ApplicationContext context: Context): FamilyFinanceDatabase =
         Room.databaseBuilder(context, FamilyFinanceDatabase::class.java, FamilyFinanceDatabase.NAME)
             // No fallbackToDestructiveMigration: silently dropping a ledger is never acceptable.
+            .addMigrations(FamilyFinanceDatabase.MIGRATION_1_2)
             .build()
 
     @Provides fun provideAccountDao(db: FamilyFinanceDatabase): AccountDao = db.accountDao()
@@ -89,6 +93,7 @@ object AppModule {
     @Provides fun providePersonalFinanceDao(db: FamilyFinanceDatabase): PersonalFinanceDao = db.personalFinanceDao()
     @Provides fun provideNotificationDao(db: FamilyFinanceDatabase): NotificationDao = db.notificationDao()
     @Provides fun provideAuditDao(db: FamilyFinanceDatabase): AuditDao = db.auditDao()
+    @Provides fun provideChatDao(db: FamilyFinanceDatabase): ChatDao = db.chatDao()
     @Provides fun providePendingOpDao(db: FamilyFinanceDatabase): PendingOpDao = db.pendingOpDao()
     @Provides fun provideMaintenanceDao(db: FamilyFinanceDatabase): MaintenanceDao = db.maintenanceDao()
 
@@ -170,4 +175,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindAuditRepository(impl: AuditRepositoryImpl): AuditRepository
+
+    @Binds
+    abstract fun bindChatRepository(impl: ChatRepositoryImpl): ChatRepository
 }

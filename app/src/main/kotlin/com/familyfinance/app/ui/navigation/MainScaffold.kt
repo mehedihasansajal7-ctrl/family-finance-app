@@ -44,6 +44,7 @@ import com.familyfinance.app.domain.model.UserProfile
 import com.familyfinance.app.ui.accounts.AccountEditScreen
 import com.familyfinance.app.ui.accounts.AccountsScreen
 import com.familyfinance.app.ui.add.AddTransactionScreen
+import com.familyfinance.app.ui.chat.ChatScreen
 import com.familyfinance.app.ui.dashboard.DashboardScreen
 import com.familyfinance.app.ui.goals.GoalsScreen
 import com.familyfinance.app.ui.members.MembersScreen
@@ -123,6 +124,8 @@ fun MainScaffold(
             }
 
             composable(Routes.REPORTS) { ReportsScreen() }
+
+            composable(Routes.CHAT) { ChatScreen() }
 
             composable(Routes.GOALS) { GoalsScreen() }
 

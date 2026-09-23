@@ -164,6 +164,20 @@ service cloud.firestore {
       allow update, delete: if isAdmin(familyId);
     }
 
+    // ---- one family group chat: active members read/write, admins moderate
+    match /families/{familyId}/chatMessages/{messageId} {
+      allow read: if isMember(familyId);
+      allow create: if isMember(familyId)
+        && request.resource.data.senderUid == me()
+        && request.resource.data.familyId == familyId
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 1000;
+      allow update: if false;
+      allow delete: if isMember(familyId)
+        && (resource.data.senderUid == me() || isAdmin(familyId));
+    }
+
     // =========================================================================
     // SERVER-WRITTEN family aggregate
     //

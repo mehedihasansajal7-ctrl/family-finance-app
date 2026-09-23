@@ -12,6 +12,7 @@ import com.familyfinance.app.domain.model.CategoryTotal
 import com.familyfinance.app.domain.model.Family
 import com.familyfinance.app.domain.model.FamilyAggregate
 import com.familyfinance.app.domain.model.FamilyBill
+import com.familyfinance.app.domain.model.FamilyChatMessage
 import com.familyfinance.app.domain.model.FamilyBudget
 import com.familyfinance.app.domain.model.FamilyGoal
 import com.familyfinance.app.domain.model.MemberProfile
@@ -180,6 +181,32 @@ class FirebaseRemoteSyncEngine @Inject constructor(
         Unit
     }
 
+    override suspend fun pushChatMessage(message: FamilyChatMessage): Outcome<Unit> = guard(message.senderUid) {
+        familyCollection(message.familyId, COL_CHAT)?.document(message.id)
+            ?.set(message.toMap(), SetOptions.merge())?.await()
+        Unit
+    }
+
+    override suspend fun deleteChatMessage(familyId: String, messageId: String): Outcome<Unit> = guard(null) {
+        familyCollection(familyId, COL_CHAT)?.document(messageId)?.delete()?.await()
+        Unit
+    }
+
+    override fun observeFamilyChat(familyId: String): Flow<List<FamilyChatMessage>> = callbackFlow {
+        val registration = familyCollection(familyId, COL_CHAT)
+            ?.orderBy("createdAt")
+            ?.limitToLast(300)
+            ?.addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    AppLog.w("Chat listener error: %s", error.code)
+                    return@addSnapshotListener
+                }
+                val messages = snapshot?.documents.orEmpty().mapNotNull { it.toFamilyChatMessage() }
+                trySend(messages)
+            }
+        awaitClose { registration?.remove() }
+    }
+
     override suspend fun pushBudget(budget: FamilyBudget): Outcome<Unit> = guard(null) {
         familyCollection(budget.familyId, COL_BUDGETS)?.document(budget.id)
             ?.set(budget.toMap(), SetOptions.merge())?.await()
@@ -315,6 +342,7 @@ class FirebaseRemoteSyncEngine @Inject constructor(
         private const val COL_GOALS = "goals"
         private const val COL_BILLS = "bills"
         private const val COL_AGGREGATES = "aggregates"
+        private const val COL_CHAT = "chatMessages"
     }
 }
 
@@ -484,6 +512,15 @@ private fun AuditLog.toMap(): Map<String, Any?> = mapOf(
     "createdAt" to createdAt,
 )
 
+private fun FamilyChatMessage.toMap(): Map<String, Any?> = mapOf(
+    "messageId" to id,
+    "familyId" to familyId,
+    "senderUid" to senderUid,
+    "senderName" to senderName,
+    "text" to text,
+    "createdAt" to createdAt,
+)
+
 private fun MemberProfile.toMap(): Map<String, Any?> = mapOf(
     "uid" to uid,
     "familyId" to familyId,
@@ -498,6 +535,17 @@ private fun MemberProfile.toMap(): Map<String, Any?> = mapOf(
     "shareProfileWithFamily" to shareProfileWithFamily,
     "updatedAt" to updatedAt,
 )
+
+private fun DocumentSnapshot.toFamilyChatMessage(): FamilyChatMessage? {
+    if (!exists()) return null
+    val id = getString("messageId") ?: id
+    val familyId = getString("familyId") ?: return null
+    val senderUid = getString("senderUid") ?: return null
+    val senderName = getString("senderName") ?: return null
+    val text = getString("text") ?: return null
+    val createdAt = getLong("createdAt") ?: return null
+    return FamilyChatMessage(id, familyId, senderUid, senderName, text, createdAt)
+}
 
 private fun DocumentSnapshot.toFamilyAggregate(month: YearMonth): FamilyAggregate? {
     if (!exists()) return null

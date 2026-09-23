@@ -2,6 +2,16 @@ package com.familyfinance.app.domain.model
 
 import com.familyfinance.app.core.money.Money
 
+/** A family-scoped chat message. It contains no financial fields or private ledger references. */
+data class FamilyChatMessage(
+    val id: String,
+    val familyId: String,
+    val senderUid: String,
+    val senderName: String,
+    val text: String,
+    val createdAt: Long,
+)
+
 /** A shared family budget. Visibility is family-wide, but it is aggregate-only by construction. */
 data class FamilyBudget(
     val id: String,

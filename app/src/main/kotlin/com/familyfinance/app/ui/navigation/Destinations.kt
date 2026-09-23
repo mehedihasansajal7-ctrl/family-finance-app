@@ -3,6 +3,7 @@ package com.familyfinance.app.ui.navigation
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -38,6 +39,7 @@ object Routes {
     const val NOTIFICATIONS = "notifications"
     const val BUDGETS = "budgets"
     const val BILLS = "bills"
+    const val CHAT = "chat"
 
     const val ARG_ACCOUNT_ID = "accountId"
     const val ARG_TRANSACTION_ID = "transactionId"
@@ -56,4 +58,5 @@ enum class TopLevelDestination(
     REPORTS(Routes.REPORTS, "Reports", Icons.Default.BarChart),
     GOALS(Routes.GOALS, "Goals", Icons.Default.Flag),
     MY_FINANCE(Routes.MY_FINANCE, "My Finance", Icons.Default.AccountBalanceWallet),
+    CHAT(Routes.CHAT, "Chat", Icons.Default.Chat),
 }

@@ -5,6 +5,7 @@ import com.familyfinance.app.data.local.entity.AccountEntity
 import com.familyfinance.app.data.local.entity.AttachmentEntity
 import com.familyfinance.app.data.local.entity.AuditLogEntity
 import com.familyfinance.app.data.local.entity.FamilyBillEntity
+import com.familyfinance.app.data.local.entity.FamilyChatMessageEntity
 import com.familyfinance.app.data.local.entity.FamilyBudgetEntity
 import com.familyfinance.app.data.local.entity.FamilyEntity
 import com.familyfinance.app.data.local.entity.FamilyGoalEntity
@@ -23,6 +24,7 @@ import com.familyfinance.app.domain.model.AuditLog
 import com.familyfinance.app.domain.model.BillStatus
 import com.familyfinance.app.domain.model.Family
 import com.familyfinance.app.domain.model.FamilyBill
+import com.familyfinance.app.domain.model.FamilyChatMessage
 import com.familyfinance.app.domain.model.FamilyBudget
 import com.familyfinance.app.domain.model.FamilyGoal
 import com.familyfinance.app.domain.model.FamilyInvitation
@@ -182,6 +184,24 @@ fun RecurringRule.toEntity() = RecurringRuleEntity(
 )
 
 // ------------------------------------------------------------------ family & members
+
+fun FamilyChatMessageEntity.toDomain() = FamilyChatMessage(
+    id = id,
+    familyId = familyId,
+    senderUid = senderUid,
+    senderName = senderName,
+    text = text,
+    createdAt = createdAt,
+)
+
+fun FamilyChatMessage.toEntity() = FamilyChatMessageEntity(
+    id = id,
+    familyId = familyId,
+    senderUid = senderUid,
+    senderName = senderName,
+    text = text,
+    createdAt = createdAt,
+)
 
 fun FamilyEntity.toDomain() = Family(
     id = id,

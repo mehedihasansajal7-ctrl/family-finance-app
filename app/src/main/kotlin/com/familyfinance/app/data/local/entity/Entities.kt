@@ -270,3 +270,13 @@ data class PendingOpEntity(
     val attempts: Int = 0,
     val lastError: String? = null,
 )
+
+@Entity(tableName = "family_chat_messages", indices = [Index("familyId"), Index("createdAt")])
+data class FamilyChatMessageEntity(
+    @PrimaryKey val id: String,
+    val familyId: String,
+    val senderUid: String,
+    val senderName: String,
+    val text: String,
+    val createdAt: Long,
+)

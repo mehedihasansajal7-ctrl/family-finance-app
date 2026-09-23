@@ -20,7 +20,23 @@ import com.familyfinance.app.data.local.entity.PersonalLoanEntity
 import com.familyfinance.app.data.local.entity.RecurringRuleEntity
 import com.familyfinance.app.data.local.entity.SavingsGoalEntity
 import com.familyfinance.app.data.local.entity.TransactionEntity
+import com.familyfinance.app.data.local.entity.FamilyChatMessageEntity
 import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface ChatDao {
+    @Query("SELECT * FROM family_chat_messages WHERE familyId = :familyId ORDER BY createdAt ASC LIMIT 300")
+    fun observeMessages(familyId: String): Flow<List<FamilyChatMessageEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(messages: List<FamilyChatMessageEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(message: FamilyChatMessageEntity)
+
+    @Query("DELETE FROM family_chat_messages WHERE familyId = :familyId AND id = :messageId")
+    suspend fun delete(familyId: String, messageId: String)
+}
 
 /**
  * DAOs.

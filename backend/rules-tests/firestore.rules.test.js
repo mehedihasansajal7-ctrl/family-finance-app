@@ -561,6 +561,50 @@ describe("shared goal and bill field rules", () => {
 });
 
 // =============================================================================
+// Family group chat access
+// =============================================================================
+
+describe("family group chat", () => {
+  it("lets active members read and send a message", async () => {
+    const message = {
+      messageId: "chat-1",
+      familyId: FAMILY,
+      senderUid: ALICE,
+      senderName: "Member uid-alice",
+      text: "Dinner at 8?",
+      createdAt: 10,
+    };
+    await assertSucceeds(setDoc(doc(alice(), "families", FAMILY, "chatMessages", "chat-1"), message));
+    await assertSucceeds(getDoc(doc(bob(), "families", FAMILY, "chatMessages", "chat-1")));
+  });
+
+  it("blocks another family and rejects spoofed sender writes", async () => {
+    await assertFails(getDoc(doc(outsider(), "families", FAMILY, "chatMessages", "chat-1")));
+    await assertFails(setDoc(doc(alice(), "families", FAMILY, "chatMessages", "chat-spoof"), {
+      messageId: "chat-spoof",
+      familyId: FAMILY,
+      senderUid: BOB,
+      senderName: "Member uid-bob",
+      text: "Spoofed",
+      createdAt: 10,
+    }));
+  });
+
+  it("lets the sender or an admin delete, but not edit, a message", async () => {
+    await setDoc(doc(alice(), "families", FAMILY, "chatMessages", "chat-delete"), {
+      messageId: "chat-delete",
+      familyId: FAMILY,
+      senderUid: ALICE,
+      senderName: "Member uid-alice",
+      text: "Remove me",
+      createdAt: 10,
+    });
+    await assertFails(updateDoc(doc(bob(), "families", FAMILY, "chatMessages", "chat-delete"), { text: "Changed" }));
+    await assertSucceeds(deleteDoc(doc(carol(), "families", FAMILY, "chatMessages", "chat-delete")));
+  });
+});
+
+// =============================================================================
 // Credential fields are rejected at the database edge
 // =============================================================================
 

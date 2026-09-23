@@ -3,6 +3,8 @@ package com.familyfinance.app.data.local
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.familyfinance.app.data.local.dao.AccountDao
 import com.familyfinance.app.data.local.dao.AuditDao
 import com.familyfinance.app.data.local.dao.FamilyDao
@@ -19,6 +21,7 @@ import com.familyfinance.app.data.local.entity.AuditLogEntity
 import com.familyfinance.app.data.local.entity.FamilyBillEntity
 import com.familyfinance.app.data.local.entity.FamilyBudgetEntity
 import com.familyfinance.app.data.local.entity.FamilyEntity
+import com.familyfinance.app.data.local.entity.FamilyChatMessageEntity
 import com.familyfinance.app.data.local.entity.FamilyGoalEntity
 import com.familyfinance.app.data.local.entity.InvitationEntity
 import com.familyfinance.app.data.local.entity.MemberProfileEntity
@@ -56,8 +59,9 @@ import com.familyfinance.app.data.local.entity.TransactionEntity
         NotificationEntity::class,
         AuditLogEntity::class,
         PendingOpEntity::class,
+        FamilyChatMessageEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -72,8 +76,22 @@ abstract class FamilyFinanceDatabase : RoomDatabase() {
     abstract fun auditDao(): AuditDao
     abstract fun pendingOpDao(): PendingOpDao
     abstract fun maintenanceDao(): MaintenanceDao
+    abstract fun chatDao(): com.familyfinance.app.data.local.dao.ChatDao
 
     companion object {
         const val NAME = "family_finance.db"
+
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS family_chat_messages (" +
+                        "id TEXT NOT NULL, familyId TEXT NOT NULL, senderUid TEXT NOT NULL, " +
+                        "senderName TEXT NOT NULL, text TEXT NOT NULL, createdAt INTEGER NOT NULL, " +
+                        "PRIMARY KEY(id))",
+                )
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_family_chat_messages_familyId ON family_chat_messages(familyId)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_family_chat_messages_createdAt ON family_chat_messages(createdAt)")
+            }
+        }
     }
 }
