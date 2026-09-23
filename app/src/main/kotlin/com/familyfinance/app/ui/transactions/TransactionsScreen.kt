@@ -144,6 +144,7 @@ class TransactionsViewModel @Inject constructor(
 @Composable
 fun TransactionsScreen(
     onBack: () -> Unit,
+    onEdit: (String) -> Unit,
     viewModel: TransactionsViewModel = hiltViewModel(),
 ) {
     val host = rememberMessageHost()
@@ -209,6 +210,7 @@ fun TransactionsScreen(
                     items(items, key = { it.id }) { transaction ->
                         TransactionRow(
                             transaction = transaction,
+                            onEdit = { onEdit(transaction.id) },
                             onDelete = { confirmDelete = transaction },
                         )
                     }
@@ -252,8 +254,8 @@ fun TransactionsScreen(
 }
 
 @Composable
-private fun TransactionRow(transaction: Transaction, onDelete: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+private fun TransactionRow(transaction: Transaction, onEdit: () -> Unit, onDelete: () -> Unit) {
+    Card(onClick = onEdit, modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,

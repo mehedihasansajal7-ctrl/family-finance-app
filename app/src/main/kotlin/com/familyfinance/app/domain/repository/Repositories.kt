@@ -85,6 +85,7 @@ interface AccountRepository {
 interface TransactionRepository {
     fun observeTransactions(ownerUid: String, filter: TransactionFilter = TransactionFilter()): Flow<List<Transaction>>
     fun observeRecent(ownerUid: String, limit: Int): Flow<List<Transaction>>
+    suspend fun getTransaction(ownerUid: String, transactionId: String): Outcome<Transaction>
     suspend fun upsertTransaction(transaction: Transaction): Outcome<Transaction>
     suspend fun deleteTransaction(ownerUid: String, transactionId: String): Outcome<Unit>
 

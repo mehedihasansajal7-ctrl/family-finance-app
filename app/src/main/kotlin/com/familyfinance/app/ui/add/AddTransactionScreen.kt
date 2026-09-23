@@ -132,6 +132,11 @@ class AddTransactionViewModel @Inject constructor(
 
     private var pendingReceipt: Pair<String, ByteArray>? = null
 
+    /** Set when editing an existing transaction; null when adding a new one. */
+    private var existing: Transaction? = null
+
+    val isEditing: Boolean get() = existing != null
+
     fun onType(value: TransactionType) {
         type = value
         categoryId = null
@@ -147,6 +152,30 @@ class AddTransactionViewModel @Inject constructor(
     fun onNote(value: String) { note = value }
     fun onRecurring(value: Boolean) { isRecurring = value }
     fun onRecurrence(value: RecurrenceFrequency) { recurrence = value }
+
+    /** Loads an existing transaction into the form so a wrong entry can be corrected in place. */
+    fun loadForEdit(transactionId: String) {
+        if (existing?.id == transactionId || transactionId.isBlank()) return
+        run(onSuccess = { result ->
+            val transaction = result as? Transaction ?: return@run
+            existing = transaction
+            type = transaction.type
+            amountRaw = transaction.amount.toBigDecimal().toPlainString()
+            dateEpochDay = transaction.dateEpochDay
+            categoryId = transaction.categoryId
+            accountId = transaction.accountId
+            fromAccountId = transaction.transferFromAccountId
+            toAccountId = transaction.transferToAccountId
+            note = transaction.note
+            isRecurring = transaction.recurringRuleId != null
+        }) {
+            val user = currentUser.value
+                ?: return@run com.familyfinance.app.core.result.Outcome.Failure(
+                    com.familyfinance.app.core.result.AppError.permission("Please sign in again.")
+                )
+            transactions.getTransaction(user.uid, transactionId)
+        }
+    }
 
     fun stageReceipt(fileName: String, bytes: ByteArray) {
         if (bytes.size > MAX_RECEIPT_BYTES) {
@@ -176,8 +205,8 @@ class AddTransactionViewModel @Inject constructor(
         }
 
         val draft = Transaction(
-            id = Ids.newId(),
-            clientId = Ids.newClientId(),
+            id = existing?.id ?: Ids.newId(),
+            clientId = existing?.clientId ?: Ids.newClientId(),
             ownerUid = user.uid,
             familyId = user.familyId.orEmpty(),
             type = type,
@@ -188,7 +217,7 @@ class AddTransactionViewModel @Inject constructor(
             transferToAccountId = if (type == TransactionType.TRANSFER) toAccountId else null,
             dateEpochDay = dateEpochDay,
             note = note.trim(),
-            createdAt = System.currentTimeMillis(),
+            createdAt = existing?.createdAt ?: System.currentTimeMillis(),
             updatedAt = System.currentTimeMillis(),
             syncState = SyncState.PENDING,
         )
@@ -201,7 +230,9 @@ class AddTransactionViewModel @Inject constructor(
         }
 
         run(onSuccess = {
-            if (isRecurring) {
+            // A recurring rule is only created for a brand-new entry; editing an existing one must
+            // not spawn a duplicate rule.
+            if (isRecurring && existing == null) {
                 launchSafe {
                     recurring.upsertRule(
                         com.familyfinance.app.domain.model.RecurringRule(
@@ -253,6 +284,7 @@ class AddTransactionViewModel @Inject constructor(
 fun AddTransactionScreen(
     onDone: () -> Unit,
     onManageAccounts: () -> Unit,
+    transactionId: String? = null,
     viewModel: AddTransactionViewModel = hiltViewModel(),
 ) {
     val host = rememberMessageHost()
@@ -260,6 +292,10 @@ fun AddTransactionScreen(
     val busy by viewModel.busy.collectAsState()
     val context = LocalContext.current
     ObserveMessages(viewModel, host)
+
+    androidx.compose.runtime.LaunchedEffect(transactionId) {
+        if (transactionId != null) viewModel.loadForEdit(transactionId)
+    }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
@@ -278,7 +314,7 @@ fun AddTransactionScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add transaction") },
+                title = { Text(if (transactionId != null) "Edit transaction" else "Add transaction") },
                 navigationIcon = {
                     IconButton(onClick = onDone) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
                 },
@@ -397,34 +433,36 @@ fun AddTransactionScreen(
                 )
             }
 
-            SectionCard(title = "Recurring") {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Repeat this transaction", style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            "Entries are generated automatically. The same period is never posted twice.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            if (transactionId == null) {
+                SectionCard(title = "Recurring") {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Repeat this transaction", style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                "Entries are generated automatically. The same period is never posted twice.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(checked = viewModel.isRecurring, onCheckedChange = viewModel::onRecurring)
+                    }
+                    if (viewModel.isRecurring) {
+                        SegmentedSelector(
+                            options = listOf(
+                                RecurrenceFrequency.DAILY,
+                                RecurrenceFrequency.WEEKLY,
+                                RecurrenceFrequency.MONTHLY,
+                                RecurrenceFrequency.YEARLY,
+                            ),
+                            selected = viewModel.recurrence,
+                            optionLabel = { it.label },
+                            onSelect = viewModel::onRecurrence,
                         )
                     }
-                    Switch(checked = viewModel.isRecurring, onCheckedChange = viewModel::onRecurring)
-                }
-                if (viewModel.isRecurring) {
-                    SegmentedSelector(
-                        options = listOf(
-                            RecurrenceFrequency.DAILY,
-                            RecurrenceFrequency.WEEKLY,
-                            RecurrenceFrequency.MONTHLY,
-                            RecurrenceFrequency.YEARLY,
-                        ),
-                        selected = viewModel.recurrence,
-                        optionLabel = { it.label },
-                        onSelect = viewModel::onRecurrence,
-                    )
                 }
             }
 
@@ -437,7 +475,7 @@ fun AddTransactionScreen(
                     .fillMaxWidth()
                     .height(52.dp),
             ) {
-                Text("Save transaction")
+                Text(if (transactionId != null) "Save changes" else "Save transaction")
             }
 
             Text(

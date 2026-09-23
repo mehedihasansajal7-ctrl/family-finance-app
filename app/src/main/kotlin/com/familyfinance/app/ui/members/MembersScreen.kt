@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -165,6 +166,7 @@ fun MembersScreen(
     val canManage by viewModel.canManage.collectAsState()
     val isOwner by viewModel.isOwner.collectAsState()
     val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
 
     ObserveMessages(viewModel, host)
 
@@ -222,6 +224,18 @@ fun MembersScreen(
                             OutlinedButton(onClick = {
                                 clipboard.setText(AnnotatedString(active.code))
                             }) { Text("Copy code") }
+                            OutlinedButton(onClick = {
+                                val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(
+                                        android.content.Intent.EXTRA_TEXT,
+                                        com.familyfinance.app.core.AppLinks.inviteMessage(active.code),
+                                    )
+                                }
+                                context.startActivity(
+                                    android.content.Intent.createChooser(intent, "Share invitation")
+                                )
+                            }) { Text("Share invite") }
                             TextButton(onClick = { viewModel.revoke(active) }) { Text("Revoke") }
                         }
                         Text(

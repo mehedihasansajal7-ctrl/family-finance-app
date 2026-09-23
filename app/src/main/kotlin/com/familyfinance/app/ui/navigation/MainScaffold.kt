@@ -34,10 +34,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.familyfinance.app.domain.model.UserProfile
 import com.familyfinance.app.ui.accounts.AccountEditScreen
 import com.familyfinance.app.ui.accounts.AccountsScreen
@@ -136,13 +138,19 @@ fun MainScaffold(
                 )
             }
 
-            composable(Routes.ADD_TRANSACTION) {
+            composable(
+                route = "${Routes.ADD_TRANSACTION}?${Routes.ARG_TRANSACTION_ID}={${Routes.ARG_TRANSACTION_ID}}",
+                arguments = listOf(
+                    navArgument(Routes.ARG_TRANSACTION_ID) { nullable = true; defaultValue = null },
+                ),
+            ) { entry ->
                 AddTransactionScreen(
                     onDone = { navController.popBackStack() },
                     onManageAccounts = {
                         navController.popBackStack()
                         navController.navigate(Routes.ACCOUNTS)
                     },
+                    transactionId = entry.arguments?.getString(Routes.ARG_TRANSACTION_ID),
                 )
             }
 
@@ -162,7 +170,12 @@ fun MainScaffold(
             }
 
             composable(Routes.TRANSACTIONS) {
-                TransactionsScreen(onBack = { navController.popBackStack() })
+                TransactionsScreen(
+                    onBack = { navController.popBackStack() },
+                    onEdit = { transactionId ->
+                        navController.navigate("${Routes.ADD_TRANSACTION}?${Routes.ARG_TRANSACTION_ID}=$transactionId")
+                    },
+                )
             }
 
             composable(Routes.RECURRING) {

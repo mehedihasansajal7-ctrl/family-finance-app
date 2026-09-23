@@ -135,6 +135,12 @@ class TransactionRepositoryImpl @Inject constructor(
     override fun observeRecent(ownerUid: String, limit: Int): Flow<List<Transaction>> =
         transactionDao.observeRecent(ownerUid, limit).map { rows -> rows.map { it.toDomain() } }
 
+    override suspend fun getTransaction(ownerUid: String, transactionId: String): Outcome<Transaction> {
+        val row = transactionDao.find(ownerUid, transactionId)?.toDomain()
+            ?: return Outcome.Failure(AppError.notFound("Transaction not found."))
+        return Outcome.Success(row)
+    }
+
     override suspend fun upsertTransaction(transaction: Transaction): Outcome<Transaction> {
         val uid = session.currentUserOnce()?.uid
             ?: return Outcome.Failure(AppError.permission("Please sign in again."))
