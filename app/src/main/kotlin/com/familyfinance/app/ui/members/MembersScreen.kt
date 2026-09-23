@@ -9,11 +9,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -269,11 +272,26 @@ fun MembersScreen(
                             }
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            if (isOwner && member.uid != currentUser?.uid) {
-                                TextButton(onClick = { roleTarget = member }) { Text("Role") }
-                            }
-                            if (canManage && member.uid != currentUser?.uid) {
-                                TextButton(onClick = { removeTarget = member }) { Text("Remove") }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (isOwner && member.uid != currentUser?.uid) {
+                                    TextButton(onClick = { roleTarget = member }) { Text("Role") }
+                                }
+                                if (canManage && member.uid != currentUser?.uid) {
+                                    TextButton(
+                                        onClick = { removeTarget = member },
+                                        colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                                            contentColor = MaterialTheme.colorScheme.error,
+                                        ),
+                                    ) {
+                                        Icon(
+                                            Icons.Default.PersonRemove,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                        androidx.compose.foundation.layout.Spacer(Modifier.width(4.dp))
+                                        Text("Remove")
+                                    }
+                                }
                             }
                         }
                     }
