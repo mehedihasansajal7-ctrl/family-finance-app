@@ -4,20 +4,24 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Wallet body -->
+    <!-- Finance wallet -->
     <path
-        android:fillColor="#FFFFFF"
+        android:fillColor="#EAF6FF"
         android:pathData="M34,38h40a7,7 0 0 1 7,7v18a7,7 0 0 1 -7,7h-40a7,7 0 0 1 -7,-7v-18a7,7 0 0 1 7,-7z" />
-    <!-- Wallet flap -->
+    <!-- Cyan ledger flap -->
     <path
-        android:fillColor="#D7F2E9"
+        android:fillColor="#83D0F3"
         android:pathData="M34,38h40a7,7 0 0 1 7,7v5h-54v-5a7,7 0 0 1 7,-7z" />
-    <!-- Clasp -->
+    <!-- Navy clasp -->
     <path
-        android:fillColor="#0F5F53"
+        android:fillColor="#00658F"
         android:pathData="M63,50h14a5,5 0 0 1 5,5v2a5,5 0 0 1 -5,5h-14a6,6 0 0 1 0,-12z" />
-    <!-- Coin -->
+    <!-- Amber coin -->
     <path
-        android:fillColor="#F2B705"
+        android:fillColor="#E8C45E"
         android:pathData="M45,57.5m-6.5,0a6.5,6.5 0 1,0 13,0a6.5,6.5 0 1,0 -13,0" />
+    <!-- Small upward finance bars -->
+    <path
+        android:fillColor="#00658F"
+        android:pathData="M35,72h5v-7h-5zM43,72h5v-12h-5zM51,72h5v-17h-5z" />
 </vector>

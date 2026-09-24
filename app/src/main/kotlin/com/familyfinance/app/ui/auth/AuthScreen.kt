@@ -2,6 +2,7 @@ package com.familyfinance.app.ui.auth
 
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,12 +12,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -39,6 +40,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -48,6 +51,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.familyfinance.app.data.remote.FirebaseConfig
+import com.familyfinance.app.R
 import com.familyfinance.app.ui.common.BaseViewModel
 import com.familyfinance.app.ui.common.ObserveMessages
 import com.familyfinance.app.ui.common.rememberMessageHost
@@ -154,12 +158,19 @@ fun AuthScreen(
         ) {
             Spacer(Modifier.height(24.dp))
 
-            Icon(
-                imageVector = Icons.Default.Lock,
-                contentDescription = null,
-                modifier = Modifier.size(52.dp),
-                tint = MaterialTheme.colorScheme.primary,
-            )
+            Box(
+                modifier = Modifier
+                    .size(88.dp)
+                    .clip(MaterialTheme.shapes.large)
+                    .background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center,
+            ) {
+                androidx.compose.foundation.Image(
+                    painter = painterResource(R.drawable.ic_launcher_foreground),
+                    contentDescription = "Family Finance logo",
+                    modifier = Modifier.size(88.dp),
+                )
+            }
             Text(
                 "Family Finance",
                 style = MaterialTheme.typography.headlineMedium,
