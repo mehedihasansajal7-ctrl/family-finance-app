@@ -76,7 +76,8 @@ fun MainScaffold(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val showBottomBar = currentRoute in TopLevelDestination.entries.map { it.route }
-    val showAddButton = currentRoute in setOf(Routes.DASHBOARD, Routes.GOALS, Routes.MY_FINANCE)
+    // Goals owns its own tab-aware Add action for goals, budgets, and bills.
+    val showAddButton = currentRoute in setOf(Routes.DASHBOARD, Routes.MY_FINANCE)
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
