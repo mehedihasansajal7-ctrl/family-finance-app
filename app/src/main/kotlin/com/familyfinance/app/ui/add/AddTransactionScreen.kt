@@ -18,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -75,6 +76,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
 
@@ -92,6 +94,7 @@ class AddTransactionViewModel @Inject constructor(
     private val recurring: RecurringRepository,
     private val attachments: AttachmentRepository,
     private val session: SessionManager,
+    private val receiptScanner: com.familyfinance.app.core.receipt.ReceiptScanner,
 ) : BaseViewModel() {
 
     private val currentUser = session.currentUser
@@ -128,6 +131,8 @@ class AddTransactionViewModel @Inject constructor(
     var validationMessage by mutableStateOf<String?>(null)
         private set
     var saved by mutableStateOf(false)
+        private set
+    var scanning by mutableStateOf(false)
         private set
 
     private var pendingReceipt: Pair<String, ByteArray>? = null
@@ -184,6 +189,31 @@ class AddTransactionViewModel @Inject constructor(
         }
         pendingReceipt = fileName to bytes
         info("Receipt ready to attach.")
+    }
+
+    /** Reads amount and date from a receipt photo on-device and prefills the form. */
+    fun scanReceipt(uri: Uri) {
+        viewModelScope.launch {
+            scanning = true
+            try {
+                val text = receiptScanner.recognize(uri)
+                val parsed = com.familyfinance.app.core.receipt.ReceiptParser.parse(text, AppTime.today())
+                parsed.amountMinor?.let { amountRaw = Money.ofMinor(it).toBigDecimal().toPlainString() }
+                parsed.dateEpochDay?.let { dateEpochDay = it }
+                validationMessage = null
+                if (parsed.amountMinor == null && parsed.dateEpochDay == null) {
+                    info("Could not read the receipt — please enter the details manually.")
+                } else {
+                    info("Receipt scanned. Please check the amount and date.")
+                }
+            } catch (cancellation: kotlinx.coroutines.CancellationException) {
+                throw cancellation
+            } catch (unexpected: Exception) {
+                error("Could not scan the receipt image.")
+            } finally {
+                scanning = false
+            }
+        }
     }
 
     fun save() {
@@ -307,6 +337,10 @@ fun AddTransactionScreen(
         }
     }
 
+    val scanPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri != null) viewModel.scanReceipt(uri)
+    }
+
     androidx.compose.runtime.LaunchedEffect(viewModel.saved) {
         if (viewModel.saved) onDone()
     }
@@ -419,6 +453,14 @@ fun AddTransactionScreen(
                     singleLine = false,
                 )
                 OutlinedButton(
+                    onClick = { scanPicker.launch("image/*") },
+                    enabled = !viewModel.scanning,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Default.PhotoCamera, contentDescription = null)
+                    Text(if (viewModel.scanning) "  Scanning…" else "  Scan a receipt (auto-fill)")
+                }
+                OutlinedButton(
                     onClick = { picker.launch("image/*") },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -427,7 +469,7 @@ fun AddTransactionScreen(
                     Text("  Attach a receipt photo")
                 }
                 Text(
-                    "Receipts are stored privately on this device and are never visible to other members.",
+                    "Scanning reads the amount and date on your device. Receipts are stored privately and are never visible to other members.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
