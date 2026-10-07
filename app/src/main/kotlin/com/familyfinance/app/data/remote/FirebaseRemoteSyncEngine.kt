@@ -268,6 +268,21 @@ class FirebaseRemoteSyncEngine @Inject constructor(
         Unit
     }
 
+    override suspend fun uploadChatPhoto(
+        ownerUid: String,
+        familyId: String,
+        storagePath: String,
+        bytes: ByteArray,
+        mimeType: String,
+    ): Outcome<String> = guard(ownerUid) {
+        val ref = storage.reference.child("families/$familyId/shared/$ownerUid/$storagePath")
+        val metadata = com.google.firebase.storage.StorageMetadata.Builder()
+            .setContentType(mimeType)
+            .build()
+        ref.putBytes(bytes, metadata).await()
+        ref.downloadUrl.await().toString()
+    }
+
     // ------------------------------------------------------------------ aggregate (read-only)
 
     override suspend fun fetchFamilyAggregate(familyId: String, month: YearMonth): Outcome<FamilyAggregate> =
@@ -519,6 +534,8 @@ private fun FamilyChatMessage.toMap(): Map<String, Any?> = mapOf(
     "senderName" to senderName,
     "text" to text,
     "createdAt" to createdAt,
+    "attachmentUrl" to attachmentUrl,
+    "attachmentContentType" to attachmentContentType,
 )
 
 private fun MemberProfile.toMap(): Map<String, Any?> = mapOf(
@@ -544,7 +561,9 @@ private fun DocumentSnapshot.toFamilyChatMessage(): FamilyChatMessage? {
     val senderName = getString("senderName") ?: return null
     val text = getString("text") ?: return null
     val createdAt = getLong("createdAt") ?: return null
-    return FamilyChatMessage(id, familyId, senderUid, senderName, text, createdAt)
+    val attachmentUrl = getString("attachmentUrl")
+    val attachmentContentType = getString("attachmentContentType")
+    return FamilyChatMessage(id, familyId, senderUid, senderName, text, createdAt, attachmentUrl, attachmentContentType)
 }
 
 private fun DocumentSnapshot.toFamilyAggregate(month: YearMonth): FamilyAggregate? {

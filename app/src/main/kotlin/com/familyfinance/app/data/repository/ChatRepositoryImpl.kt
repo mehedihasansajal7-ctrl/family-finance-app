@@ -73,7 +73,54 @@ class ChatRepositoryImpl @Inject constructor(
         return Outcome.Success(Unit)
     }
 
+    override suspend fun sendImageMessage(
+        familyId: String,
+        fileName: String,
+        mimeType: String,
+        bytes: ByteArray,
+    ): Outcome<FamilyChatMessage> {
+        val user = session.currentUserOnce() ?: return Outcome.Failure(AppError.permission("Please sign in again."))
+        if (user.familyId != familyId || user.status != MemberStatus.ACTIVE) return Outcome.Failure(AppError.permission())
+        if (!engine.isConfigured) return Outcome.Failure(AppError.network("Photos require an active account."))
+        if (bytes.size > MAX_IMAGE_BYTES) {
+            return Outcome.Failure(AppError.validation("Photo is too large (max ${MAX_IMAGE_BYTES / 1024 / 1024} MB)."))
+        }
+        if (mimeType !in ALLOWED_IMAGE_TYPES) {
+            return Outcome.Failure(AppError.validation("Only JPEG, PNG or WebP photos are supported."))
+        }
+
+        val id = Ids.newId()
+        val safeName = fileName.replace(Regex("[^A-Za-z0-9._-]"), "_").take(60).ifBlank { "photo" }
+        val storagePath = "chat/$id-$safeName"
+
+        val upload = engine.uploadChatPhoto(
+            ownerUid = user.uid,
+            familyId = familyId,
+            storagePath = storagePath,
+            bytes = bytes,
+            mimeType = mimeType,
+        )
+        if (upload.isFailure) return Outcome.Failure(upload.errorOrNull() ?: AppError.network("Could not upload the photo."))
+
+        val message = FamilyChatMessage(
+            id = id,
+            familyId = familyId,
+            senderUid = user.uid,
+            senderName = user.displayName.ifBlank { user.email.substringBefore('@') },
+            text = "",
+            createdAt = time.nowMillis(),
+            attachmentUrl = upload.getOrNull(),
+            attachmentContentType = mimeType,
+        )
+        val pushed = engine.pushChatMessage(message)
+        if (pushed.isFailure) return Outcome.Failure(pushed.errorOrNull() ?: AppError.network("Message could not be sent."))
+        chatDao.upsert(message.toEntity())
+        return Outcome.Success(message)
+    }
+
     companion object {
         const val MAX_MESSAGE_LENGTH = 1000
+        const val MAX_IMAGE_BYTES = 10 * 1024 * 1024
+        val ALLOWED_IMAGE_TYPES = setOf("image/jpeg", "image/png", "image/webp")
     }
 }

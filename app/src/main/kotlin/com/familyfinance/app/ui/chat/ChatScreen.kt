@@ -1,5 +1,8 @@
 package com.familyfinance.app.ui.chat
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -7,12 +10,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -34,10 +39,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import coil.compose.AsyncImage
 import com.familyfinance.app.data.session.SessionManager
 import com.familyfinance.app.domain.model.FamilyChatMessage
 import com.familyfinance.app.domain.repository.ChatRepository
@@ -78,6 +86,11 @@ class ChatViewModel @Inject constructor(
         run(onSuccess = { onSuccess() }) { chat.sendMessage(family, text) }
     }
 
+    fun sendImage(fileName: String, mimeType: String, bytes: ByteArray, onSuccess: () -> Unit) {
+        val family = familyId.value ?: return
+        run(onSuccess = { onSuccess() }) { chat.sendImageMessage(family, fileName, mimeType, bytes) }
+    }
+
     fun delete(message: FamilyChatMessage) {
         val family = familyId.value ?: return
         run(showBusy = false) { chat.deleteMessage(family, message.id) }
@@ -95,6 +108,18 @@ fun ChatScreen(
     var draft by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val host = rememberMessageHost()
+    val context = LocalContext.current
+
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri != null) {
+            runCatching {
+                val mime = context.contentResolver.getType(uri) ?: "image/jpeg"
+                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
+                val name = uri.lastPathSegment?.substringAfterLast('/') ?: "photo"
+                viewModel.sendImage(name, mime, bytes) { }
+            }
+        }
+    }
 
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) listState.animateScrollToItem(messages.lastIndex)
@@ -121,6 +146,9 @@ fun ChatScreen(
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                IconButton(onClick = { photoPicker.launch("image/*") }) {
+                    Icon(Icons.Default.AddPhotoAlternate, contentDescription = "Attach photo")
+                }
                 OutlinedTextField(
                     value = draft,
                     onValueChange = { if (it.length <= 1000) draft = it },
@@ -194,7 +222,19 @@ private fun ChatBubble(message: FamilyChatMessage, isMine: Boolean, onDelete: ()
                         }
                     }
                 }
-                Text(message.text, style = MaterialTheme.typography.bodyLarge)
+                if (message.attachmentUrl != null) {
+                    AsyncImage(
+                        model = message.attachmentUrl,
+                        contentDescription = "Photo",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .padding(top = 4.dp)
+                            .size(width = 220.dp, height = 220.dp),
+                    )
+                }
+                if (message.text.isNotBlank()) {
+                    Text(message.text, style = MaterialTheme.typography.bodyLarge)
+                }
                 Text(
                     DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(message.createdAt)),
                     style = MaterialTheme.typography.labelSmall,

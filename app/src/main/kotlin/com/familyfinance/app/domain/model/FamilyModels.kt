@@ -10,6 +10,8 @@ data class FamilyChatMessage(
     val senderName: String,
     val text: String,
     val createdAt: Long,
+    val attachmentUrl: String? = null,
+    val attachmentContentType: String? = null,
 )
 
 /** A shared family budget. Visibility is family-wide, but it is aggregate-only by construction. */

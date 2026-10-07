@@ -602,6 +602,27 @@ describe("family group chat", () => {
     await assertFails(updateDoc(doc(bob(), "families", FAMILY, "chatMessages", "chat-delete"), { text: "Changed" }));
     await assertSucceeds(deleteDoc(doc(carol(), "families", FAMILY, "chatMessages", "chat-delete")));
   });
+
+  it("allows a photo-only message but rejects a completely empty one", async () => {
+    await assertSucceeds(setDoc(doc(alice(), "families", FAMILY, "chatMessages", "chat-photo"), {
+      messageId: "chat-photo",
+      familyId: FAMILY,
+      senderUid: ALICE,
+      senderName: "Member uid-alice",
+      text: "",
+      attachmentUrl: "https://example.com/photo.jpg",
+      attachmentContentType: "image/jpeg",
+      createdAt: 11,
+    }));
+    await assertFails(setDoc(doc(alice(), "families", FAMILY, "chatMessages", "chat-empty"), {
+      messageId: "chat-empty",
+      familyId: FAMILY,
+      senderUid: ALICE,
+      senderName: "Member uid-alice",
+      text: "",
+      createdAt: 12,
+    }));
+  });
 });
 
 // =============================================================================

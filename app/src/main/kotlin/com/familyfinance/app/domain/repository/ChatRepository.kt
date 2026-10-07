@@ -7,5 +7,11 @@ import kotlinx.coroutines.flow.Flow
 interface ChatRepository {
     fun observeMessages(familyId: String): Flow<List<FamilyChatMessage>>
     suspend fun sendMessage(familyId: String, text: String): Outcome<FamilyChatMessage>
+    suspend fun sendImageMessage(
+        familyId: String,
+        fileName: String,
+        mimeType: String,
+        bytes: ByteArray,
+    ): Outcome<FamilyChatMessage>
     suspend fun deleteMessage(familyId: String, messageId: String): Outcome<Unit>
 }

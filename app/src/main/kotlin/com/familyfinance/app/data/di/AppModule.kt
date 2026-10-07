@@ -83,6 +83,7 @@ object AppModule {
         Room.databaseBuilder(context, FamilyFinanceDatabase::class.java, FamilyFinanceDatabase.NAME)
             // No fallbackToDestructiveMigration: silently dropping a ledger is never acceptable.
             .addMigrations(FamilyFinanceDatabase.MIGRATION_1_2)
+            .addMigrations(FamilyFinanceDatabase.MIGRATION_2_3)
             .build()
 
     @Provides fun provideAccountDao(db: FamilyFinanceDatabase): AccountDao = db.accountDao()

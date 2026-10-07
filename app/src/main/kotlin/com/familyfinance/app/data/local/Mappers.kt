@@ -192,6 +192,8 @@ fun FamilyChatMessageEntity.toDomain() = FamilyChatMessage(
     senderName = senderName,
     text = text,
     createdAt = createdAt,
+    attachmentUrl = attachmentUrl,
+    attachmentContentType = attachmentContentType,
 )
 
 fun FamilyChatMessage.toEntity() = FamilyChatMessageEntity(
@@ -201,6 +203,8 @@ fun FamilyChatMessage.toEntity() = FamilyChatMessageEntity(
     senderName = senderName,
     text = text,
     createdAt = createdAt,
+    attachmentUrl = attachmentUrl,
+    attachmentContentType = attachmentContentType,
 )
 
 fun FamilyEntity.toDomain() = Family(

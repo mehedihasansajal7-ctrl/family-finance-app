@@ -61,7 +61,7 @@ import com.familyfinance.app.data.local.entity.TransactionEntity
         PendingOpEntity::class,
         FamilyChatMessageEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -91,6 +91,13 @@ abstract class FamilyFinanceDatabase : RoomDatabase() {
                 )
                 database.execSQL("CREATE INDEX IF NOT EXISTS index_family_chat_messages_familyId ON family_chat_messages(familyId)")
                 database.execSQL("CREATE INDEX IF NOT EXISTS index_family_chat_messages_createdAt ON family_chat_messages(createdAt)")
+            }
+        }
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE family_chat_messages ADD COLUMN attachmentUrl TEXT")
+                database.execSQL("ALTER TABLE family_chat_messages ADD COLUMN attachmentContentType TEXT")
             }
         }
     }

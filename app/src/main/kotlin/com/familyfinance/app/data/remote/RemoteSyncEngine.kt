@@ -79,6 +79,15 @@ interface RemoteSyncEngine {
 
     suspend fun deleteAttachment(storagePath: String): Outcome<Unit>
 
+    /** Uploads a chat photo to the family-shared storage path and returns its download URL. */
+    suspend fun uploadChatPhoto(
+        ownerUid: String,
+        familyId: String,
+        storagePath: String,
+        bytes: ByteArray,
+        mimeType: String,
+    ): Outcome<String>
+
     /** Fetches the server-computed, aggregate-only family dashboard payload. */
     suspend fun fetchFamilyAggregate(familyId: String, month: YearMonth): Outcome<FamilyAggregate>
 
@@ -132,6 +141,15 @@ class NoOpRemoteSyncEngine : RemoteSyncEngine {
     ) = Outcome.Success(storagePath)
 
     override suspend fun deleteAttachment(storagePath: String) = Outcome.Success(Unit)
+
+    override suspend fun uploadChatPhoto(
+        ownerUid: String,
+        familyId: String,
+        storagePath: String,
+        bytes: ByteArray,
+        mimeType: String,
+    ) = Outcome.Failure(com.familyfinance.app.core.result.AppError.notFound("No backend configured."))
+
     override suspend fun fetchFamilyAggregate(familyId: String, month: YearMonth) =
         Outcome.Failure(com.familyfinance.app.core.result.AppError.notFound("No backend configured."))
 

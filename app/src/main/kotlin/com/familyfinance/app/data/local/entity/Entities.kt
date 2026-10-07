@@ -279,4 +279,6 @@ data class FamilyChatMessageEntity(
     val senderName: String,
     val text: String,
     val createdAt: Long,
+    val attachmentUrl: String? = null,
+    val attachmentContentType: String? = null,
 )
