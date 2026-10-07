@@ -150,6 +150,14 @@ interface NotificationRepository {
     fun observeNotifications(ownerUid: String): Flow<List<AppNotification>>
     fun unreadCount(ownerUid: String): Flow<Int>
     suspend fun markRead(ownerUid: String, notificationId: String): Outcome<Unit>
+    suspend fun notify(
+        ownerUid: String,
+        familyId: String,
+        category: String,
+        title: String,
+        body: String,
+        relatedId: String? = null,
+    )
 }
 
 interface AuditRepository {

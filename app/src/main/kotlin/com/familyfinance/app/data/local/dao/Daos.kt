@@ -318,6 +318,9 @@ interface NotificationDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(notification: NotificationEntity)
 
+    @Query("SELECT COUNT(*) FROM notifications WHERE ownerUid = :ownerUid AND categoryId = :categoryId AND relatedId = :relatedId AND createdAt >= :since")
+    suspend fun countSince(ownerUid: String, categoryId: String, relatedId: String?, since: Long): Int
+
     @Query("UPDATE notifications SET readAt = :readAt WHERE ownerUid = :ownerUid AND id = :id")
     suspend fun markRead(ownerUid: String, id: String, readAt: Long)
 }

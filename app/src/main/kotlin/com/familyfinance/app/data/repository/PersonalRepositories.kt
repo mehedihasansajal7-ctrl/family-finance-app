@@ -261,13 +261,13 @@ class NotificationRepositoryImpl @Inject constructor(
      * Creates a reminder. The body is deliberately amount-free so a lock-screen preview can never
      * disclose a balance or a salary (see §27 of the product requirements).
      */
-    suspend fun notify(
+    override suspend fun notify(
         ownerUid: String,
         familyId: String,
         category: String,
         title: String,
         body: String,
-        relatedId: String? = null,
+        relatedId: String?,
     ) {
         val notification = AppNotification(
             id = Ids.newId(),
