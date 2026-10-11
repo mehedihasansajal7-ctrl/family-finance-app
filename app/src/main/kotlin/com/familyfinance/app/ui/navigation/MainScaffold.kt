@@ -69,10 +69,15 @@ import com.familyfinance.app.ui.transactions.TransactionsScreen
 fun MainScaffold(
     user: UserProfile,
     onSignOut: () -> Unit,
+    openAddOnStart: Boolean = false,
 ) {
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
     var showAddSheet by remember { mutableStateOf(false) }
+
+    androidx.compose.runtime.LaunchedEffect(openAddOnStart) {
+        if (openAddOnStart) showAddSheet = true
+    }
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route

@@ -126,7 +126,7 @@ class AppViewModel @Inject constructor(
  * land in the right place without special cases.
  */
 @Composable
-fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
+fun AppRoot(openAdd: Boolean = false, viewModel: AppViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
     val locked by viewModel.locked.collectAsState()
     val bengali by viewModel.bengaliDigits.collectAsState()
@@ -166,7 +166,7 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
                 onSignOut = viewModel::signOut,
                 manager = hiltLockManager(),
             ) {
-                MainScaffold(user = current.user, onSignOut = viewModel::signOut)
+                MainScaffold(user = current.user, onSignOut = viewModel::signOut, openAddOnStart = openAdd)
             }
         }
     }

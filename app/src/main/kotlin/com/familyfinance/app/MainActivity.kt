@@ -32,14 +32,19 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         requestNotificationPermission()
+        val openAdd = intent?.getBooleanExtra(EXTRA_OPEN_ADD, false) == true
         setContent {
             Surface(
                 modifier = Modifier.fillMaxSize(),
                 color = MaterialTheme.colorScheme.background,
             ) {
-                AppRoot()
+                AppRoot(openAdd = openAdd)
             }
         }
+    }
+
+    companion object {
+        const val EXTRA_OPEN_ADD = "com.familyfinance.app.EXTRA_OPEN_ADD"
     }
 
     private fun requestNotificationPermission() {
