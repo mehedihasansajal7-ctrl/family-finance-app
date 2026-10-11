@@ -154,7 +154,13 @@ class AddTransactionViewModel @Inject constructor(
     fun onAccount(value: String?) { accountId = value }
     fun onFromAccount(value: String?) { fromAccountId = value }
     fun onToAccount(value: String?) { toAccountId = value }
-    fun onNote(value: String) { note = value }
+    fun onNote(value: String) {
+        note = value
+        // Only fill a category the member has not chosen yet, so a suggestion never overrides a pick.
+        if (categoryId == null) {
+            com.familyfinance.app.domain.usecase.CategorySuggester.suggest(value, type)?.let { categoryId = it }
+        }
+    }
     fun onRecurring(value: Boolean) { isRecurring = value }
     fun onRecurrence(value: RecurrenceFrequency) { recurrence = value }
 

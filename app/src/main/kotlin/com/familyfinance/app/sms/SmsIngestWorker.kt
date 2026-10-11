@@ -63,18 +63,19 @@ class SmsIngestWorker @AssistedInject constructor(
         if (ownedAccounts.none { it.id == accountId }) return Result.success()
 
         val signature = "$sender|$body".hashCode().toUInt().toString(16)
+        val type = if (parsed.direction == SmsTransactionParser.Direction.INCOME) {
+            TransactionType.INCOME
+        } else {
+            TransactionType.EXPENSE
+        }
         val draft = Transaction(
             id = "sms-$signature",
             clientId = "sms-$signature",
             ownerUid = user.uid,
             familyId = familyId,
-            type = if (parsed.direction == SmsTransactionParser.Direction.INCOME) {
-                TransactionType.INCOME
-            } else {
-                TransactionType.EXPENSE
-            },
+            type = type,
             amount = Money.ofMinor(parsed.amountMinor),
-            categoryId = "other",
+            categoryId = com.familyfinance.app.domain.usecase.CategorySuggester.suggest(parsed.note, type) ?: "other",
             accountId = accountId,
             dateEpochDay = AppTime.todayEpochDay(),
             note = parsed.note,
