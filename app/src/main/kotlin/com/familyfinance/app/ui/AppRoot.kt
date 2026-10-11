@@ -66,6 +66,9 @@ class AppViewModel @Inject constructor(
     val bengaliDigits: StateFlow<Boolean> = session.bengaliDigitsEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    val themeMode: StateFlow<String> = session.themeMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SessionManager.THEME_SYSTEM)
+
     private val _locked = MutableStateFlow(false)
     val locked: StateFlow<Boolean> = _locked.asStateFlow()
 
@@ -127,8 +130,15 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
     val locked by viewModel.locked.collectAsState()
     val bengali by viewModel.bengaliDigits.collectAsState()
+    val themeMode by viewModel.themeMode.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
     LocalContext.current
+
+    val darkTheme = when (themeMode) {
+        SessionManager.THEME_LIGHT -> false
+        SessionManager.THEME_DARK -> true
+        else -> androidx.compose.foundation.isSystemInDarkTheme()
+    }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -142,7 +152,7 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    com.familyfinance.app.ui.theme.FamilyFinanceTheme(bengaliDigits = bengali) {
+    com.familyfinance.app.ui.theme.FamilyFinanceTheme(darkTheme = darkTheme, bengaliDigits = bengali) {
         when (val current = state) {
             AppState.Loading -> LoadingState(message = "Preparing your ledger…")
 

@@ -43,3 +43,6 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 .vscode/
+
+# Optional real release keystore config
+keystore.properties

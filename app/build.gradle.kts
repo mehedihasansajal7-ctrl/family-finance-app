@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -16,21 +18,31 @@ android {
         applicationId = "com.familyfinance.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 18
-        versionName = "2.3.0"
+        versionCode = 19
+        versionName = "2.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
     }
 
     signingConfigs {
-        // Release uses the debug keystore so `assembleRelease` is reproducible out of the box.
-        // REPLACE with a real upload keystore before publishing (see README > Release).
+        // Optional real upload keystore via `keystore.properties` (gitignored). When it is absent the
+        // debug keystore is used so `assembleRelease` still works out of the box.
         create("releaseCompat") {
-            storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+            val keystorePropsFile = rootProject.file("keystore.properties")
+            if (keystorePropsFile.exists()) {
+                val props = Properties()
+                keystorePropsFile.inputStream().use { stream -> props.load(stream) }
+                storeFile = file(props.getProperty("storeFile"))
+                storePassword = props.getProperty("storePassword")
+                keyAlias = props.getProperty("keyAlias")
+                keyPassword = props.getProperty("keyPassword")
+            } else {
+                storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
         }
     }
 
