@@ -9,6 +9,8 @@ import com.familyfinance.app.domain.model.FamilyAggregate
 import com.familyfinance.app.domain.model.FamilyBill
 import com.familyfinance.app.domain.model.FamilyChatMessage
 import com.familyfinance.app.domain.model.ChatReadState
+import com.familyfinance.app.domain.model.FamilyExpenseSplit
+import com.familyfinance.app.domain.model.FamilySettlement
 import com.familyfinance.app.domain.model.FamilyBudget
 import com.familyfinance.app.domain.model.FamilyGoal
 import com.familyfinance.app.domain.model.MemberProfile
@@ -53,6 +55,15 @@ interface RemoteSyncEngine {
 
     suspend fun pushChatRead(familyId: String, uid: String, lastReadAt: Long): Outcome<Unit>
     fun observeChatReads(familyId: String): kotlinx.coroutines.flow.Flow<List<ChatReadState>> =
+        kotlinx.coroutines.flow.emptyFlow()
+
+    suspend fun pushSplit(split: FamilyExpenseSplit): Outcome<Unit>
+    suspend fun deleteSplit(familyId: String, splitId: String): Outcome<Unit>
+    fun observeSplits(familyId: String): kotlinx.coroutines.flow.Flow<List<FamilyExpenseSplit>> =
+        kotlinx.coroutines.flow.emptyFlow()
+
+    suspend fun pushSettlement(settlement: FamilySettlement): Outcome<Unit>
+    fun observeSettlements(familyId: String): kotlinx.coroutines.flow.Flow<List<FamilySettlement>> =
         kotlinx.coroutines.flow.emptyFlow()
 
     suspend fun pushBudget(budget: FamilyBudget): Outcome<Unit>
@@ -125,6 +136,9 @@ class NoOpRemoteSyncEngine : RemoteSyncEngine {
     override suspend fun pushChatMessage(message: FamilyChatMessage) = Outcome.Success(Unit)
     override suspend fun deleteChatMessage(familyId: String, messageId: String) = Outcome.Success(Unit)
     override suspend fun pushChatRead(familyId: String, uid: String, lastReadAt: Long) = Outcome.Success(Unit)
+    override suspend fun pushSplit(split: FamilyExpenseSplit) = Outcome.Success(Unit)
+    override suspend fun deleteSplit(familyId: String, splitId: String) = Outcome.Success(Unit)
+    override suspend fun pushSettlement(settlement: FamilySettlement) = Outcome.Success(Unit)
     override suspend fun pushBudget(budget: FamilyBudget) = Outcome.Success(Unit)
     override suspend fun deleteBudget(budgetId: String) = Outcome.Success(Unit)
     override suspend fun pushGoal(goal: FamilyGoal) = Outcome.Success(Unit)

@@ -22,6 +22,8 @@ import com.familyfinance.app.data.local.entity.SavingsGoalEntity
 import com.familyfinance.app.data.local.entity.TransactionEntity
 import com.familyfinance.app.data.local.entity.FamilyChatMessageEntity
 import com.familyfinance.app.data.local.entity.ChatReadEntity
+import com.familyfinance.app.data.local.entity.ExpenseSplitEntity
+import com.familyfinance.app.data.local.entity.SettlementEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -49,6 +51,34 @@ interface ChatDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertReads(reads: List<ChatReadEntity>)
+}
+
+@Dao
+interface SplitDao {
+
+    @Query("SELECT * FROM expense_splits WHERE familyId = :familyId ORDER BY dateEpochDay DESC, createdAt DESC")
+    fun observeSplits(familyId: String): Flow<List<ExpenseSplitEntity>>
+
+    @Query("SELECT * FROM settlements WHERE familyId = :familyId ORDER BY createdAt DESC")
+    fun observeSettlements(familyId: String): Flow<List<SettlementEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertSplit(split: ExpenseSplitEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertSplits(splits: List<ExpenseSplitEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertSettlement(settlement: SettlementEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertSettlements(settlements: List<SettlementEntity>)
+
+    @Query("DELETE FROM expense_splits WHERE familyId = :familyId AND id = :id")
+    suspend fun deleteSplit(familyId: String, id: String)
+
+    @Query("DELETE FROM settlements WHERE familyId = :familyId AND id = :id")
+    suspend fun deleteSettlement(familyId: String, id: String)
 }
 
 /**

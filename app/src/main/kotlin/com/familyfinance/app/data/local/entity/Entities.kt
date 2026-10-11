@@ -292,3 +292,29 @@ data class ChatReadEntity(
     val uid: String,
     val lastReadAt: Long,
 )
+
+@Entity(tableName = "expense_splits", indices = [Index("familyId")])
+data class ExpenseSplitEntity(
+    @PrimaryKey val id: String,
+    val familyId: String,
+    val title: String,
+    val totalMinor: Long,
+    val paidByUid: String,
+    /** uid -> owed minor, as JSON. */
+    val sharesJson: String,
+    val dateEpochDay: Long,
+    val createdByUid: String,
+    val createdAt: Long,
+    val updatedAt: Long,
+)
+
+@Entity(tableName = "settlements", indices = [Index("familyId")])
+data class SettlementEntity(
+    @PrimaryKey val id: String,
+    val familyId: String,
+    val fromUid: String,
+    val toUid: String,
+    val amountMinor: Long,
+    val dateEpochDay: Long,
+    val createdAt: Long,
+)

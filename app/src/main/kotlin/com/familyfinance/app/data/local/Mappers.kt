@@ -10,6 +10,8 @@ import com.familyfinance.app.data.local.entity.AuditLogEntity
 import com.familyfinance.app.data.local.entity.FamilyBillEntity
 import com.familyfinance.app.data.local.entity.FamilyChatMessageEntity
 import com.familyfinance.app.data.local.entity.ChatReadEntity
+import com.familyfinance.app.data.local.entity.ExpenseSplitEntity
+import com.familyfinance.app.data.local.entity.SettlementEntity
 import com.familyfinance.app.data.local.entity.FamilyBudgetEntity
 import com.familyfinance.app.data.local.entity.FamilyEntity
 import com.familyfinance.app.data.local.entity.FamilyGoalEntity
@@ -30,6 +32,8 @@ import com.familyfinance.app.domain.model.Family
 import com.familyfinance.app.domain.model.FamilyBill
 import com.familyfinance.app.domain.model.FamilyChatMessage
 import com.familyfinance.app.domain.model.ChatReadState
+import com.familyfinance.app.domain.model.FamilyExpenseSplit
+import com.familyfinance.app.domain.model.FamilySettlement
 import com.familyfinance.app.domain.model.FamilyBudget
 import com.familyfinance.app.domain.model.FamilyGoal
 import com.familyfinance.app.domain.model.FamilyInvitation
@@ -231,6 +235,63 @@ internal fun encodeReactions(reactions: Map<String, String>): String =
 internal fun decodeReactions(raw: String?): Map<String, String> =
     if (raw.isNullOrBlank()) emptyMap()
     else runCatching { reactionsCodec.decodeFromString(reactionsSerializer, raw) }.getOrDefault(emptyMap())
+
+// ------------------------------------------------------------------ expense splits & settlements
+
+private val sharesSerializer = MapSerializer(String.serializer(), Long.serializer())
+
+private fun encodeShares(shares: Map<String, Long>): String =
+    reactionsCodec.encodeToString(sharesSerializer, shares)
+
+private fun decodeShares(raw: String?): Map<String, Long> =
+    if (raw.isNullOrBlank()) emptyMap()
+    else runCatching { reactionsCodec.decodeFromString(sharesSerializer, raw) }.getOrDefault(emptyMap())
+
+fun ExpenseSplitEntity.toDomain() = FamilyExpenseSplit(
+    id = id,
+    familyId = familyId,
+    title = title,
+    total = Money.ofMinor(totalMinor),
+    paidByUid = paidByUid,
+    shares = decodeShares(sharesJson).mapValues { Money.ofMinor(it.value) },
+    dateEpochDay = dateEpochDay,
+    createdByUid = createdByUid,
+    createdAt = createdAt,
+    updatedAt = updatedAt,
+)
+
+fun FamilyExpenseSplit.toEntity() = ExpenseSplitEntity(
+    id = id,
+    familyId = familyId,
+    title = title,
+    totalMinor = total.minor,
+    paidByUid = paidByUid,
+    sharesJson = encodeShares(shares.mapValues { it.value.minor }),
+    dateEpochDay = dateEpochDay,
+    createdByUid = createdByUid,
+    createdAt = createdAt,
+    updatedAt = updatedAt,
+)
+
+fun SettlementEntity.toDomain() = FamilySettlement(
+    id = id,
+    familyId = familyId,
+    fromUid = fromUid,
+    toUid = toUid,
+    amount = Money.ofMinor(amountMinor),
+    dateEpochDay = dateEpochDay,
+    createdAt = createdAt,
+)
+
+fun FamilySettlement.toEntity() = SettlementEntity(
+    id = id,
+    familyId = familyId,
+    fromUid = fromUid,
+    toUid = toUid,
+    amountMinor = amount.minor,
+    dateEpochDay = dateEpochDay,
+    createdAt = createdAt,
+)
 fun FamilyEntity.toDomain() = Family(
     id = id,
     name = name,

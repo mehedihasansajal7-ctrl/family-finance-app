@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Repeat
@@ -156,6 +157,7 @@ fun MyFinanceScreen(
     onOpenRecurring: () -> Unit,
     onOpenSavings: () -> Unit,
     onOpenLoans: () -> Unit,
+    onOpenSplit: () -> Unit,
     onOpenProfile: () -> Unit,
     onOpenSettings: () -> Unit,
     viewModel: MyFinanceViewModel = hiltViewModel(),
@@ -201,6 +203,7 @@ fun MyFinanceScreen(
                 NavigationRow("Recurring entries", "Salary, rent, bills and EMIs", Icons.Default.Repeat, onOpenRecurring)
                 NavigationRow("My savings goals", "Private to you", Icons.Default.Savings, onOpenSavings)
                 NavigationRow("My loans", "Borrowed and lent", Icons.Default.TrendingUp, onOpenLoans)
+                NavigationRow("Split & settle", "Who owes whom in the family", Icons.Default.Group, onOpenSplit)
                 NavigationRow("My profile", "Name, photo, contact details", Icons.Default.Person, onOpenProfile)
                 NavigationRow("Settings", "App lock, export, sign out", Icons.Default.Receipt, onOpenSettings)
             }

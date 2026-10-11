@@ -55,6 +55,7 @@ import com.familyfinance.app.ui.profile.ProfileScreen
 import com.familyfinance.app.ui.recurring.RecurringScreen
 import com.familyfinance.app.ui.reports.ReportsScreen
 import com.familyfinance.app.ui.settings.SettingsScreen
+import com.familyfinance.app.ui.split.SplitScreen
 import com.familyfinance.app.ui.transactions.TransactionsScreen
 
 /**
@@ -129,6 +130,8 @@ fun MainScaffold(
 
             composable(Routes.CHAT) { ChatScreen() }
 
+            composable(Routes.SPLIT) { SplitScreen(onBack = { navController.popBackStack() }) }
+
             composable(Routes.GOALS) { GoalsScreen() }
 
             composable(Routes.MY_FINANCE) {
@@ -138,6 +141,7 @@ fun MainScaffold(
                     onOpenRecurring = { navController.navigate(Routes.RECURRING) },
                     onOpenSavings = { navController.navigate(Routes.SAVINGS) },
                     onOpenLoans = { navController.navigate(Routes.SAVINGS) },
+                    onOpenSplit = { navController.navigate(Routes.SPLIT) },
                     onOpenProfile = { navController.navigate(Routes.PROFILE) },
                     onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 )

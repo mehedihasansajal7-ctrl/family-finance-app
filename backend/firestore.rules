@@ -190,6 +190,23 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ---- shared expense splits: family-shared. Any member records one; creator/admin may delete.
+    match /families/{familyId}/splits/{splitId} {
+      allow read: if isMember(familyId);
+      allow create: if isMember(familyId) && request.resource.data.createdByUid == me();
+      allow update: if false;
+      allow delete: if isMember(familyId)
+        && (resource.data.createdByUid == me() || isAdmin(familyId));
+    }
+
+    // ---- settlements: any member records a payment; only an admin can remove one.
+    match /families/{familyId}/settlements/{settlementId} {
+      allow read: if isMember(familyId);
+      allow create: if isMember(familyId);
+      allow update: if false;
+      allow delete: if isAdmin(familyId);
+    }
+
     // =========================================================================
     // SERVER-WRITTEN family aggregate
     //

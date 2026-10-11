@@ -40,6 +40,7 @@ object Routes {
     const val BUDGETS = "budgets"
     const val BILLS = "bills"
     const val CHAT = "chat"
+    const val SPLIT = "split"
 
     const val ARG_ACCOUNT_ID = "accountId"
     const val ARG_TRANSACTION_ID = "transactionId"

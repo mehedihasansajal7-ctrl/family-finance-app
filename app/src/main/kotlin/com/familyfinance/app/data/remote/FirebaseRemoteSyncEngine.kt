@@ -14,6 +14,8 @@ import com.familyfinance.app.domain.model.FamilyAggregate
 import com.familyfinance.app.domain.model.FamilyBill
 import com.familyfinance.app.domain.model.FamilyChatMessage
 import com.familyfinance.app.domain.model.ChatReadState
+import com.familyfinance.app.domain.model.FamilyExpenseSplit
+import com.familyfinance.app.domain.model.FamilySettlement
 import com.familyfinance.app.domain.model.FamilyBudget
 import com.familyfinance.app.domain.model.FamilyGoal
 import com.familyfinance.app.domain.model.MemberProfile
@@ -231,6 +233,47 @@ class FirebaseRemoteSyncEngine @Inject constructor(
         awaitClose { registration?.remove() }
     }
 
+    override suspend fun pushSplit(split: FamilyExpenseSplit): Outcome<Unit> = guard(split.createdByUid) {
+        familyCollection(split.familyId, COL_SPLITS)?.document(split.id)
+            ?.set(split.toMap(), SetOptions.merge())?.await()
+        Unit
+    }
+
+    override suspend fun deleteSplit(familyId: String, splitId: String): Outcome<Unit> = guard(null) {
+        familyCollection(familyId, COL_SPLITS)?.document(splitId)?.delete()?.await()
+        Unit
+    }
+
+    override fun observeSplits(familyId: String): Flow<List<FamilyExpenseSplit>> = callbackFlow {
+        val registration = familyCollection(familyId, COL_SPLITS)
+            ?.addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    AppLog.w("Splits listener error: %s", error.code)
+                    return@addSnapshotListener
+                }
+                trySend(snapshot?.documents.orEmpty().mapNotNull { it.toFamilyExpenseSplit() })
+            }
+        awaitClose { registration?.remove() }
+    }
+
+    override suspend fun pushSettlement(settlement: FamilySettlement): Outcome<Unit> = guard(null) {
+        familyCollection(settlement.familyId, COL_SETTLEMENTS)?.document(settlement.id)
+            ?.set(settlement.toMap(), SetOptions.merge())?.await()
+        Unit
+    }
+
+    override fun observeSettlements(familyId: String): Flow<List<FamilySettlement>> = callbackFlow {
+        val registration = familyCollection(familyId, COL_SETTLEMENTS)
+            ?.addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    AppLog.w("Settlements listener error: %s", error.code)
+                    return@addSnapshotListener
+                }
+                trySend(snapshot?.documents.orEmpty().mapNotNull { it.toFamilySettlement() })
+            }
+        awaitClose { registration?.remove() }
+    }
+
     override suspend fun pushBudget(budget: FamilyBudget): Outcome<Unit> = guard(null) {
         familyCollection(budget.familyId, COL_BUDGETS)?.document(budget.id)
             ?.set(budget.toMap(), SetOptions.merge())?.await()
@@ -383,6 +426,8 @@ class FirebaseRemoteSyncEngine @Inject constructor(
         private const val COL_AGGREGATES = "aggregates"
         private const val COL_CHAT = "chatMessages"
         private const val COL_CHAT_READS = "chatReads"
+        private const val COL_SPLITS = "splits"
+        private const val COL_SETTLEMENTS = "settlements"
     }
 }
 
@@ -604,6 +649,77 @@ private fun DocumentSnapshot.toFamilyChatMessage(): FamilyChatMessage? {
     return FamilyChatMessage(
         id, familyId, senderUid, senderName, text, createdAt,
         attachmentUrl, attachmentContentType, replyToId, replyPreview, reactions,
+    )
+}
+
+private fun FamilyExpenseSplit.toMap(): Map<String, Any?> = mapOf(
+    "splitId" to id,
+    "familyId" to familyId,
+    "title" to title,
+    "totalMinor" to total.minor,
+    "paidByUid" to paidByUid,
+    "shares" to shares.mapValues { it.value.minor },
+    "dateEpochDay" to dateEpochDay,
+    "createdByUid" to createdByUid,
+    "createdAt" to createdAt,
+    "updatedAt" to updatedAt,
+)
+
+private fun FamilySettlement.toMap(): Map<String, Any?> = mapOf(
+    "settlementId" to id,
+    "familyId" to familyId,
+    "fromUid" to fromUid,
+    "toUid" to toUid,
+    "amountMinor" to amount.minor,
+    "dateEpochDay" to dateEpochDay,
+    "createdAt" to createdAt,
+)
+
+private fun DocumentSnapshot.toFamilyExpenseSplit(): FamilyExpenseSplit? {
+    if (!exists()) return null
+    val id = getString("splitId") ?: id
+    val familyId = getString("familyId") ?: return null
+    val title = getString("title") ?: return null
+    val totalMinor = getLong("totalMinor") ?: return null
+    val paidByUid = getString("paidByUid") ?: return null
+    val createdByUid = getString("createdByUid") ?: return null
+    val shares = (get("shares") as? Map<*, *>)
+        ?.mapNotNull { (k, v) ->
+            val key = k as? String ?: return@mapNotNull null
+            val value = (v as? Number)?.toLong() ?: return@mapNotNull null
+            key to com.familyfinance.app.core.money.Money.ofMinor(value)
+        }
+        ?.toMap()
+        .orEmpty()
+    return FamilyExpenseSplit(
+        id = id,
+        familyId = familyId,
+        title = title,
+        total = com.familyfinance.app.core.money.Money.ofMinor(totalMinor),
+        paidByUid = paidByUid,
+        shares = shares,
+        dateEpochDay = getLong("dateEpochDay") ?: 0L,
+        createdByUid = createdByUid,
+        createdAt = getLong("createdAt") ?: 0L,
+        updatedAt = getLong("updatedAt") ?: 0L,
+    )
+}
+
+private fun DocumentSnapshot.toFamilySettlement(): FamilySettlement? {
+    if (!exists()) return null
+    val id = getString("settlementId") ?: id
+    val familyId = getString("familyId") ?: return null
+    val fromUid = getString("fromUid") ?: return null
+    val toUid = getString("toUid") ?: return null
+    val amountMinor = getLong("amountMinor") ?: return null
+    return FamilySettlement(
+        id = id,
+        familyId = familyId,
+        fromUid = fromUid,
+        toUid = toUid,
+        amount = com.familyfinance.app.core.money.Money.ofMinor(amountMinor),
+        dateEpochDay = getLong("dateEpochDay") ?: 0L,
+        createdAt = getLong("createdAt") ?: 0L,
     )
 }
 

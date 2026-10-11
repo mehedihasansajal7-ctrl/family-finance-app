@@ -23,6 +23,8 @@ import com.familyfinance.app.data.local.entity.FamilyBudgetEntity
 import com.familyfinance.app.data.local.entity.FamilyEntity
 import com.familyfinance.app.data.local.entity.FamilyChatMessageEntity
 import com.familyfinance.app.data.local.entity.ChatReadEntity
+import com.familyfinance.app.data.local.entity.ExpenseSplitEntity
+import com.familyfinance.app.data.local.entity.SettlementEntity
 import com.familyfinance.app.data.local.entity.FamilyGoalEntity
 import com.familyfinance.app.data.local.entity.InvitationEntity
 import com.familyfinance.app.data.local.entity.MemberProfileEntity
@@ -62,8 +64,10 @@ import com.familyfinance.app.data.local.entity.TransactionEntity
         PendingOpEntity::class,
         FamilyChatMessageEntity::class,
         ChatReadEntity::class,
+        ExpenseSplitEntity::class,
+        SettlementEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -79,6 +83,7 @@ abstract class FamilyFinanceDatabase : RoomDatabase() {
     abstract fun pendingOpDao(): PendingOpDao
     abstract fun maintenanceDao(): MaintenanceDao
     abstract fun chatDao(): com.familyfinance.app.data.local.dao.ChatDao
+    abstract fun splitDao(): com.familyfinance.app.data.local.dao.SplitDao
 
     companion object {
         const val NAME = "family_finance.db"
@@ -113,6 +118,26 @@ abstract class FamilyFinanceDatabase : RoomDatabase() {
                         "familyId TEXT NOT NULL, uid TEXT NOT NULL, lastReadAt INTEGER NOT NULL, " +
                         "PRIMARY KEY(familyId, uid))",
                 )
+            }
+        }
+
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS expense_splits (" +
+                        "id TEXT NOT NULL, familyId TEXT NOT NULL, title TEXT NOT NULL, " +
+                        "totalMinor INTEGER NOT NULL, paidByUid TEXT NOT NULL, sharesJson TEXT NOT NULL, " +
+                        "dateEpochDay INTEGER NOT NULL, createdByUid TEXT NOT NULL, " +
+                        "createdAt INTEGER NOT NULL, updatedAt INTEGER NOT NULL, PRIMARY KEY(id))",
+                )
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_expense_splits_familyId ON expense_splits(familyId)")
+                database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS settlements (" +
+                        "id TEXT NOT NULL, familyId TEXT NOT NULL, fromUid TEXT NOT NULL, toUid TEXT NOT NULL, " +
+                        "amountMinor INTEGER NOT NULL, dateEpochDay INTEGER NOT NULL, createdAt INTEGER NOT NULL, " +
+                        "PRIMARY KEY(id))",
+                )
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_settlements_familyId ON settlements(familyId)")
             }
         }
     }
