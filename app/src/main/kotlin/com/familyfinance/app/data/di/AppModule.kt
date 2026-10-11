@@ -82,14 +82,29 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideDatabase(@ApplicationContext context: Context): FamilyFinanceDatabase =
-        Room.databaseBuilder(context, FamilyFinanceDatabase::class.java, FamilyFinanceDatabase.NAME)
+    fun provideDatabase(@ApplicationContext context: Context): FamilyFinanceDatabase {
+        val builder = Room.databaseBuilder(context, FamilyFinanceDatabase::class.java, FamilyFinanceDatabase.NAME)
             // No fallbackToDestructiveMigration: silently dropping a ledger is never acceptable.
             .addMigrations(FamilyFinanceDatabase.MIGRATION_1_2)
             .addMigrations(FamilyFinanceDatabase.MIGRATION_2_3)
             .addMigrations(FamilyFinanceDatabase.MIGRATION_3_4)
             .addMigrations(FamilyFinanceDatabase.MIGRATION_4_5)
-            .build()
+
+        return try {
+            System.loadLibrary("sqlcipher")
+            val passphrase = com.familyfinance.app.data.local.DatabasePassphrase.get(context)
+            // Upgrade any existing plaintext database in place before opening it encrypted.
+            com.familyfinance.app.data.local.DatabaseEncryption.migrateIfNeeded(
+                context,
+                FamilyFinanceDatabase.NAME,
+                passphrase,
+            )
+            builder.openHelperFactory(net.zetetic.database.sqlcipher.SupportOpenHelperFactory(passphrase)).build()
+        } catch (error: Throwable) {
+            com.familyfinance.app.core.logging.AppLog.e("Database encryption unavailable; falling back to plaintext", error)
+            builder.build()
+        }
+    }
 
     @Provides fun provideAccountDao(db: FamilyFinanceDatabase): AccountDao = db.accountDao()
     @Provides fun provideTransactionDao(db: FamilyFinanceDatabase): TransactionDao = db.transactionDao()
