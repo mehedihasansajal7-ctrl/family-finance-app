@@ -304,6 +304,46 @@ private fun DashboardContent(
         item { PrivacyNote() }
 
         item {
+            val insights = com.familyfinance.app.domain.usecase.InsightEngine.forAggregate(aggregate) {
+                CategoryLabels.expense(it)
+            }
+            if (insights.isNotEmpty()) {
+                SectionCard(title = "Insights", subtitle = "This month at a glance") {
+                    insights.forEach { insight ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Text(
+                                text = when (insight.kind) {
+                                    com.familyfinance.app.domain.model.Insight.Kind.UP -> "▲"
+                                    com.familyfinance.app.domain.model.Insight.Kind.DOWN -> "▼"
+                                    com.familyfinance.app.domain.model.Insight.Kind.WARNING -> "⚠"
+                                    else -> "•"
+                                },
+                                style = MaterialTheme.typography.titleMedium,
+                                color = when (insight.kind) {
+                                    com.familyfinance.app.domain.model.Insight.Kind.WARNING -> semantics.expense
+                                    com.familyfinance.app.domain.model.Insight.Kind.UP -> semantics.expense
+                                    com.familyfinance.app.domain.model.Insight.Kind.DOWN -> semantics.income
+                                    else -> MaterialTheme.colorScheme.primary
+                                },
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(insight.title, style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    insight.detail,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
             SectionCard(
                 title = "Income vs expense",
                 subtitle = "Last 6 months, family totals",
