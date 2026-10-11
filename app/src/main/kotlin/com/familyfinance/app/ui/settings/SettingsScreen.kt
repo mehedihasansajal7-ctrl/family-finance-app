@@ -45,6 +45,7 @@ import com.familyfinance.app.domain.repository.TransactionRepository
 import com.familyfinance.app.ui.common.BaseViewModel
 import com.familyfinance.app.ui.common.ObserveMessages
 import com.familyfinance.app.ui.common.rememberMessageHost
+import com.familyfinance.app.ui.components.PickerField
 import com.familyfinance.app.ui.components.SectionCard
 import com.familyfinance.app.ui.components.SegmentedSelector
 import com.familyfinance.app.ui.export.Exporter
@@ -53,7 +54,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -64,10 +68,26 @@ class SettingsViewModel @Inject constructor(
     private val familyFinance: FamilyFinanceRepository,
     private val families: FamilyRepository,
     private val transactions: TransactionRepository,
+    private val accounts: com.familyfinance.app.domain.repository.AccountRepository,
     private val audit: AuditRepository,
     private val exporter: Exporter,
     private val lockManager: BiometricLockManager,
 ) : BaseViewModel() {
+
+    val captureFromSms: StateFlow<Boolean> = session.captureFromSms
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val defaultSmsAccountId: StateFlow<String?> = session.defaultSmsAccountId
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val smsAccounts: StateFlow<List<com.familyfinance.app.domain.model.Account>> = session.currentUser
+        .map { it?.uid }
+        .distinctUntilChanged()
+        .flatMapLatest { uid ->
+            if (uid == null) kotlinx.coroutines.flow.flowOf(emptyList())
+            else accounts.observeAccounts(uid)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val biometricEnabled: StateFlow<Boolean> = session.biometricLockEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
@@ -97,6 +117,14 @@ class SettingsViewModel @Inject constructor(
 
     fun setBengaliDigits(enabled: Boolean) {
         launchSafe { session.setBengaliDigits(enabled) }
+    }
+
+    fun setCaptureFromSms(enabled: Boolean) {
+        launchSafe { session.setCaptureFromSms(enabled) }
+    }
+
+    fun setDefaultSmsAccount(accountId: String?) {
+        launchSafe { session.setDefaultSmsAccountId(accountId) }
     }
 
     fun setTheme(mode: String) {
@@ -184,9 +212,20 @@ fun SettingsScreen(
     val biometric by viewModel.biometricEnabled.collectAsState()
     val bengali by viewModel.bengaliDigits.collectAsState()
     val theme by viewModel.themeMode.collectAsState()
+    val captureSms by viewModel.captureFromSms.collectAsState()
+    val defaultSmsAccount by viewModel.defaultSmsAccountId.collectAsState()
+    val smsAccounts by viewModel.smsAccounts.collectAsState()
     val share by viewModel.shareIntent.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
     var confirmSignOut by remember { mutableStateOf(false) }
+
+    val smsPermission = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions(),
+    ) { result ->
+        if (result[android.Manifest.permission.RECEIVE_SMS] == true) {
+            viewModel.setCaptureFromSms(true)
+        }
+    }
 
     ObserveMessages(viewModel, host)
 
@@ -278,6 +317,47 @@ fun SettingsScreen(
                 OutlinedButton(onClick = viewModel::exportPersonalCsv, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.FileDownload, contentDescription = null)
                     Text("  My transactions (CSV)")
+                }
+            }
+
+            SectionCard(
+                title = "SMS capture",
+                subtitle = "Optional. Reads bKash / Nagad / bank transaction SMS on this device to log entries.",
+            ) {
+                ToggleRow(
+                    title = "Capture from SMS",
+                    subtitle = "Off by default. Messages are parsed on-device and never uploaded.",
+                    checked = captureSms,
+                    enabled = true,
+                    onChange = { enabled ->
+                        if (enabled) {
+                            smsPermission.launch(
+                                arrayOf(
+                                    android.Manifest.permission.RECEIVE_SMS,
+                                    android.Manifest.permission.READ_SMS,
+                                ),
+                            )
+                        } else {
+                            viewModel.setCaptureFromSms(false)
+                        }
+                    },
+                )
+                if (captureSms) {
+                    if (smsAccounts.isEmpty()) {
+                        Text(
+                            "Add an account first, then pick it here as the default.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        PickerField(
+                            label = "Default account",
+                            options = smsAccounts,
+                            selected = smsAccounts.firstOrNull { it.id == defaultSmsAccount },
+                            optionLabel = { it.name },
+                            onSelect = { viewModel.setDefaultSmsAccount(it.id) },
+                        )
+                    }
                 }
             }
 

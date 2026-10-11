@@ -37,6 +37,8 @@ class SessionManager(private val context: Context) {
 
         val BIOMETRIC_LOCK = booleanPreferencesKey("biometric_lock")
         val BENGALI_DIGITS = booleanPreferencesKey("bengali_digits")
+        val CAPTURE_SMS = booleanPreferencesKey("capture_sms")
+        val DEFAULT_SMS_ACCOUNT = stringPreferencesKey("default_sms_account")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val LAST_ACTIVE = longPreferencesKey("last_active_at")
         val LAST_SYNC = longPreferencesKey("last_sync_at")
@@ -57,6 +59,8 @@ class SessionManager(private val context: Context) {
 
     val biometricLockEnabled: Flow<Boolean> = context.sessionDataStore.data.map { it[Keys.BIOMETRIC_LOCK] ?: false }
     val bengaliDigitsEnabled: Flow<Boolean> = context.sessionDataStore.data.map { it[Keys.BENGALI_DIGITS] ?: false }
+    val captureFromSms: Flow<Boolean> = context.sessionDataStore.data.map { it[Keys.CAPTURE_SMS] ?: false }
+    val defaultSmsAccountId: Flow<String?> = context.sessionDataStore.data.map { it[Keys.DEFAULT_SMS_ACCOUNT] }
     val themeMode: Flow<String> = context.sessionDataStore.data.map { it[Keys.THEME_MODE] ?: THEME_SYSTEM }
     val lastActiveAt: Flow<Long> = context.sessionDataStore.data.map { it[Keys.LAST_ACTIVE] ?: 0L }
     val lastSyncAt: Flow<Long> = context.sessionDataStore.data.map { it[Keys.LAST_SYNC] ?: 0L }
@@ -88,6 +92,16 @@ class SessionManager(private val context: Context) {
 
     suspend fun setBengaliDigits(enabled: Boolean) {
         context.sessionDataStore.edit { it[Keys.BENGALI_DIGITS] = enabled }
+    }
+
+    suspend fun setCaptureFromSms(enabled: Boolean) {
+        context.sessionDataStore.edit { it[Keys.CAPTURE_SMS] = enabled }
+    }
+
+    suspend fun setDefaultSmsAccountId(accountId: String?) {
+        context.sessionDataStore.edit { prefs ->
+            accountId?.let { prefs[Keys.DEFAULT_SMS_ACCOUNT] = it } ?: prefs.remove(Keys.DEFAULT_SMS_ACCOUNT)
+        }
     }
 
     suspend fun setThemeMode(mode: String) {
