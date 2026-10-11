@@ -623,6 +623,19 @@ describe("family group chat", () => {
       createdAt: 12,
     }));
   });
+
+  it("lets a member write only their own read position", async () => {
+    await assertSucceeds(setDoc(doc(alice(), "families", FAMILY, "chatReads", ALICE), {
+      uid: ALICE,
+      lastReadAt: 100,
+    }));
+    await assertSucceeds(getDoc(doc(bob(), "families", FAMILY, "chatReads", ALICE)));
+    await assertFails(setDoc(doc(alice(), "families", FAMILY, "chatReads", BOB), {
+      uid: BOB,
+      lastReadAt: 100,
+    }));
+    await assertFails(getDoc(doc(outsider(), "families", FAMILY, "chatReads", ALICE)));
+  });
 });
 
 // =============================================================================

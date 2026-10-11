@@ -21,6 +21,7 @@ import com.familyfinance.app.data.local.entity.RecurringRuleEntity
 import com.familyfinance.app.data.local.entity.SavingsGoalEntity
 import com.familyfinance.app.data.local.entity.TransactionEntity
 import com.familyfinance.app.data.local.entity.FamilyChatMessageEntity
+import com.familyfinance.app.data.local.entity.ChatReadEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -36,6 +37,18 @@ interface ChatDao {
 
     @Query("DELETE FROM family_chat_messages WHERE familyId = :familyId AND id = :messageId")
     suspend fun delete(familyId: String, messageId: String)
+
+    @Query("SELECT * FROM family_chat_messages WHERE familyId = :familyId AND id = :id LIMIT 1")
+    suspend fun find(familyId: String, id: String): FamilyChatMessageEntity?
+
+    @Query("SELECT * FROM chat_reads WHERE familyId = :familyId")
+    fun observeReads(familyId: String): Flow<List<ChatReadEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertRead(read: ChatReadEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertReads(reads: List<ChatReadEntity>)
 }
 
 /**

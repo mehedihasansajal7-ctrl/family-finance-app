@@ -180,6 +180,16 @@ service cloud.firestore {
         && (resource.data.senderUid == me() || isAdmin(familyId));
     }
 
+    // ---- per-member chat read position: any member reads, a member writes only their own
+    match /families/{familyId}/chatReads/{uid} {
+      allow read: if isMember(familyId);
+      allow create, update: if isMember(familyId)
+        && uid == me()
+        && request.resource.data.uid == me()
+        && request.resource.data.lastReadAt is number;
+      allow delete: if false;
+    }
+
     // =========================================================================
     // SERVER-WRITTEN family aggregate
     //

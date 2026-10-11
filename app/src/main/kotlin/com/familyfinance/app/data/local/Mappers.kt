@@ -1,11 +1,15 @@
 package com.familyfinance.app.data.local
 
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
+
 import com.familyfinance.app.core.money.Money
 import com.familyfinance.app.data.local.entity.AccountEntity
 import com.familyfinance.app.data.local.entity.AttachmentEntity
 import com.familyfinance.app.data.local.entity.AuditLogEntity
 import com.familyfinance.app.data.local.entity.FamilyBillEntity
 import com.familyfinance.app.data.local.entity.FamilyChatMessageEntity
+import com.familyfinance.app.data.local.entity.ChatReadEntity
 import com.familyfinance.app.data.local.entity.FamilyBudgetEntity
 import com.familyfinance.app.data.local.entity.FamilyEntity
 import com.familyfinance.app.data.local.entity.FamilyGoalEntity
@@ -25,6 +29,7 @@ import com.familyfinance.app.domain.model.BillStatus
 import com.familyfinance.app.domain.model.Family
 import com.familyfinance.app.domain.model.FamilyBill
 import com.familyfinance.app.domain.model.FamilyChatMessage
+import com.familyfinance.app.domain.model.ChatReadState
 import com.familyfinance.app.domain.model.FamilyBudget
 import com.familyfinance.app.domain.model.FamilyGoal
 import com.familyfinance.app.domain.model.FamilyInvitation
@@ -194,6 +199,9 @@ fun FamilyChatMessageEntity.toDomain() = FamilyChatMessage(
     createdAt = createdAt,
     attachmentUrl = attachmentUrl,
     attachmentContentType = attachmentContentType,
+    replyToId = replyToId,
+    replyPreview = replyPreview,
+    reactions = decodeReactions(reactionsJson),
 )
 
 fun FamilyChatMessage.toEntity() = FamilyChatMessageEntity(
@@ -205,8 +213,24 @@ fun FamilyChatMessage.toEntity() = FamilyChatMessageEntity(
     createdAt = createdAt,
     attachmentUrl = attachmentUrl,
     attachmentContentType = attachmentContentType,
+    replyToId = replyToId,
+    replyPreview = replyPreview,
+    reactionsJson = encodeReactions(reactions),
 )
 
+fun ChatReadEntity.toDomain() = ChatReadState(familyId = familyId, uid = uid, lastReadAt = lastReadAt)
+
+fun ChatReadState.toEntity() = ChatReadEntity(familyId = familyId, uid = uid, lastReadAt = lastReadAt)
+
+private val reactionsCodec = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+private val reactionsSerializer = MapSerializer(String.serializer(), String.serializer())
+
+internal fun encodeReactions(reactions: Map<String, String>): String =
+    reactionsCodec.encodeToString(reactionsSerializer, reactions)
+
+internal fun decodeReactions(raw: String?): Map<String, String> =
+    if (raw.isNullOrBlank()) emptyMap()
+    else runCatching { reactionsCodec.decodeFromString(reactionsSerializer, raw) }.getOrDefault(emptyMap())
 fun FamilyEntity.toDomain() = Family(
     id = id,
     name = name,

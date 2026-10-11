@@ -22,6 +22,7 @@ import com.familyfinance.app.data.local.entity.FamilyBillEntity
 import com.familyfinance.app.data.local.entity.FamilyBudgetEntity
 import com.familyfinance.app.data.local.entity.FamilyEntity
 import com.familyfinance.app.data.local.entity.FamilyChatMessageEntity
+import com.familyfinance.app.data.local.entity.ChatReadEntity
 import com.familyfinance.app.data.local.entity.FamilyGoalEntity
 import com.familyfinance.app.data.local.entity.InvitationEntity
 import com.familyfinance.app.data.local.entity.MemberProfileEntity
@@ -60,8 +61,9 @@ import com.familyfinance.app.data.local.entity.TransactionEntity
         AuditLogEntity::class,
         PendingOpEntity::class,
         FamilyChatMessageEntity::class,
+        ChatReadEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -98,6 +100,19 @@ abstract class FamilyFinanceDatabase : RoomDatabase() {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("ALTER TABLE family_chat_messages ADD COLUMN attachmentUrl TEXT")
                 database.execSQL("ALTER TABLE family_chat_messages ADD COLUMN attachmentContentType TEXT")
+            }
+        }
+
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE family_chat_messages ADD COLUMN replyToId TEXT")
+                database.execSQL("ALTER TABLE family_chat_messages ADD COLUMN replyPreview TEXT")
+                database.execSQL("ALTER TABLE family_chat_messages ADD COLUMN reactionsJson TEXT")
+                database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS chat_reads (" +
+                        "familyId TEXT NOT NULL, uid TEXT NOT NULL, lastReadAt INTEGER NOT NULL, " +
+                        "PRIMARY KEY(familyId, uid))",
+                )
             }
         }
     }

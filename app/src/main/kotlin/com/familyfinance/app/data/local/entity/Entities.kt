@@ -281,4 +281,14 @@ data class FamilyChatMessageEntity(
     val createdAt: Long,
     val attachmentUrl: String? = null,
     val attachmentContentType: String? = null,
+    val replyToId: String? = null,
+    val replyPreview: String? = null,
+    val reactionsJson: String? = null,
+)
+
+@Entity(tableName = "chat_reads", primaryKeys = ["familyId", "uid"])
+data class ChatReadEntity(
+    val familyId: String,
+    val uid: String,
+    val lastReadAt: Long,
 )

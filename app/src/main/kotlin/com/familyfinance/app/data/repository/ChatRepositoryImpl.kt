@@ -5,10 +5,12 @@ import com.familyfinance.app.core.result.Outcome
 import com.familyfinance.app.core.util.Ids
 import com.familyfinance.app.core.util.TimeProvider
 import com.familyfinance.app.data.local.dao.ChatDao
+import com.familyfinance.app.data.local.entity.ChatReadEntity
 import com.familyfinance.app.data.local.toDomain
 import com.familyfinance.app.data.local.toEntity
 import com.familyfinance.app.data.remote.RemoteSyncEngine
 import com.familyfinance.app.data.session.SessionManager
+import com.familyfinance.app.domain.model.ChatReadState
 import com.familyfinance.app.domain.model.FamilyChatMessage
 import com.familyfinance.app.domain.model.MemberStatus
 import com.familyfinance.app.domain.repository.ChatRepository
@@ -39,7 +41,24 @@ class ChatRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun sendMessage(familyId: String, text: String): Outcome<FamilyChatMessage> {
+    override fun observeReads(familyId: String): Flow<List<ChatReadState>> = channelFlow {
+        launch {
+            chatDao.observeReads(familyId).map { rows -> rows.map { it.toDomain() } }.collect { send(it) }
+        }
+        if (engine.isConfigured) {
+            launch {
+                engine.observeChatReads(familyId).collect { reads ->
+                    chatDao.upsertReads(reads.map { ChatReadEntity(it.familyId, it.uid, it.lastReadAt) })
+                }
+            }
+        }
+    }
+
+    override suspend fun sendMessage(
+        familyId: String,
+        text: String,
+        replyTo: FamilyChatMessage?,
+    ): Outcome<FamilyChatMessage> {
         val user = session.currentUserOnce() ?: return Outcome.Failure(AppError.permission("Please sign in again."))
         if (user.familyId != familyId || user.status != MemberStatus.ACTIVE) return Outcome.Failure(AppError.permission())
         val clean = text.trim()
@@ -55,22 +74,13 @@ class ChatRepositoryImpl @Inject constructor(
             senderName = user.displayName.ifBlank { user.email.substringBefore('@') },
             text = clean,
             createdAt = time.nowMillis(),
+            replyToId = replyTo?.id,
+            replyPreview = replyTo?.let { previewOf(it) },
         )
         val pushed = if (engine.isConfigured) engine.pushChatMessage(message) else Outcome.Success(Unit)
         if (pushed.isFailure) return Outcome.Failure(pushed.errorOrNull() ?: AppError.network("Message could not be sent."))
         chatDao.upsert(message.toEntity())
         return Outcome.Success(message)
-    }
-
-    override suspend fun deleteMessage(familyId: String, messageId: String): Outcome<Unit> {
-        val user = session.currentUserOnce() ?: return Outcome.Failure(AppError.permission("Please sign in again."))
-        if (user.familyId != familyId || user.status != MemberStatus.ACTIVE) return Outcome.Failure(AppError.permission())
-        if (engine.isConfigured) {
-            val deleted = engine.deleteChatMessage(familyId, messageId)
-            if (deleted.isFailure) return deleted
-        }
-        chatDao.delete(familyId, messageId)
-        return Outcome.Success(Unit)
     }
 
     override suspend fun sendImageMessage(
@@ -116,6 +126,58 @@ class ChatRepositoryImpl @Inject constructor(
         if (pushed.isFailure) return Outcome.Failure(pushed.errorOrNull() ?: AppError.network("Message could not be sent."))
         chatDao.upsert(message.toEntity())
         return Outcome.Success(message)
+    }
+
+    override suspend fun toggleReaction(familyId: String, messageId: String, emoji: String): Outcome<Unit> {
+        val user = session.currentUserOnce() ?: return Outcome.Failure(AppError.permission("Please sign in again."))
+        if (user.familyId != familyId || user.status != MemberStatus.ACTIVE) return Outcome.Failure(AppError.permission())
+        val existing = chatDao.find(familyId, messageId)?.toDomain()
+            ?: return Outcome.Failure(AppError.notFound("That message is no longer available."))
+
+        val mine = existing.reactions[user.uid]
+        val reactions = existing.reactions.toMutableMap()
+        if (mine == emoji) reactions.remove(user.uid) else reactions[user.uid] = emoji
+        val updated = existing.copy(reactions = reactions)
+
+        chatDao.upsert(updated.toEntity())
+        if (engine.isConfigured) {
+            val pushed = engine.pushChatMessage(updated)
+            if (pushed.isFailure) {
+                // Roll the local cache back so the UI does not show a reaction the server never got.
+                chatDao.upsert(existing.toEntity())
+                return Outcome.Failure(pushed.errorOrNull() ?: AppError.network("Could not update the reaction."))
+            }
+        }
+        return Outcome.Success(Unit)
+    }
+
+    override suspend fun deleteMessage(familyId: String, messageId: String): Outcome<Unit> {
+        val user = session.currentUserOnce() ?: return Outcome.Failure(AppError.permission("Please sign in again."))
+        if (user.familyId != familyId || user.status != MemberStatus.ACTIVE) return Outcome.Failure(AppError.permission())
+        if (engine.isConfigured) {
+            val deleted = engine.deleteChatMessage(familyId, messageId)
+            if (deleted.isFailure) return deleted
+        }
+        chatDao.delete(familyId, messageId)
+        return Outcome.Success(Unit)
+    }
+
+    override suspend fun markRead(familyId: String): Outcome<Unit> {
+        val user = session.currentUserOnce() ?: return Outcome.Failure(AppError.permission("Please sign in again."))
+        if (user.familyId != familyId || user.status != MemberStatus.ACTIVE) return Outcome.Failure(AppError.permission())
+        val now = time.nowMillis()
+        chatDao.upsertRead(ChatReadEntity(familyId, user.uid, now))
+        if (engine.isConfigured) engine.pushChatRead(familyId, user.uid, now)
+        return Outcome.Success(Unit)
+    }
+
+    private fun previewOf(message: FamilyChatMessage): String {
+        val body = when {
+            !message.attachmentUrl.isNullOrBlank() && message.text.isBlank() -> "Photo"
+            else -> message.text
+        }
+        val trimmed = body.trim().replace(Regex("\\s+"), " ").take(80)
+        return "${message.senderName}: $trimmed"
     }
 
     companion object {

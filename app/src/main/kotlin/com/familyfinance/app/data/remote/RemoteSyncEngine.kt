@@ -8,6 +8,7 @@ import com.familyfinance.app.domain.model.Family
 import com.familyfinance.app.domain.model.FamilyAggregate
 import com.familyfinance.app.domain.model.FamilyBill
 import com.familyfinance.app.domain.model.FamilyChatMessage
+import com.familyfinance.app.domain.model.ChatReadState
 import com.familyfinance.app.domain.model.FamilyBudget
 import com.familyfinance.app.domain.model.FamilyGoal
 import com.familyfinance.app.domain.model.MemberProfile
@@ -48,6 +49,10 @@ interface RemoteSyncEngine {
     suspend fun pushChatMessage(message: FamilyChatMessage): Outcome<Unit>
     suspend fun deleteChatMessage(familyId: String, messageId: String): Outcome<Unit>
     fun observeFamilyChat(familyId: String): kotlinx.coroutines.flow.Flow<List<FamilyChatMessage>> =
+        kotlinx.coroutines.flow.emptyFlow()
+
+    suspend fun pushChatRead(familyId: String, uid: String, lastReadAt: Long): Outcome<Unit>
+    fun observeChatReads(familyId: String): kotlinx.coroutines.flow.Flow<List<ChatReadState>> =
         kotlinx.coroutines.flow.emptyFlow()
 
     suspend fun pushBudget(budget: FamilyBudget): Outcome<Unit>
@@ -119,6 +124,7 @@ class NoOpRemoteSyncEngine : RemoteSyncEngine {
     override suspend fun pushMemberProfile(profile: MemberProfile, role: Role, status: MemberStatus) = Outcome.Success(Unit)
     override suspend fun pushChatMessage(message: FamilyChatMessage) = Outcome.Success(Unit)
     override suspend fun deleteChatMessage(familyId: String, messageId: String) = Outcome.Success(Unit)
+    override suspend fun pushChatRead(familyId: String, uid: String, lastReadAt: Long) = Outcome.Success(Unit)
     override suspend fun pushBudget(budget: FamilyBudget) = Outcome.Success(Unit)
     override suspend fun deleteBudget(budgetId: String) = Outcome.Success(Unit)
     override suspend fun pushGoal(goal: FamilyGoal) = Outcome.Success(Unit)

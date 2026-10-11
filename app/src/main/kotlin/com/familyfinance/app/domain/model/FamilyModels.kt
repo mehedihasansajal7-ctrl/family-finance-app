@@ -12,6 +12,19 @@ data class FamilyChatMessage(
     val createdAt: Long,
     val attachmentUrl: String? = null,
     val attachmentContentType: String? = null,
+    /** When set, this message is a reply to another message in the same family. */
+    val replyToId: String? = null,
+    /** Short "sender: snippet" snapshot so a quoted reply renders without re-reading the original. */
+    val replyPreview: String? = null,
+    /** Emoji reactions: reacting member uid -> emoji. */
+    val reactions: Map<String, String> = emptyMap(),
+)
+
+/** Per-member read position for the family chat, used to show "seen by" state. */
+data class ChatReadState(
+    val familyId: String,
+    val uid: String,
+    val lastReadAt: Long,
 )
 
 /** A shared family budget. Visibility is family-wide, but it is aggregate-only by construction. */
