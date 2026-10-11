@@ -72,6 +72,7 @@ class SettingsViewModel @Inject constructor(
     private val audit: AuditRepository,
     private val exporter: Exporter,
     private val lockManager: BiometricLockManager,
+    private val backup: com.familyfinance.app.core.backup.BackupService,
 ) : BaseViewModel() {
 
     val captureFromSms: StateFlow<Boolean> = session.captureFromSms
@@ -125,6 +126,36 @@ class SettingsViewModel @Inject constructor(
 
     fun setDefaultSmsAccount(accountId: String?) {
         launchSafe { session.setDefaultSmsAccountId(accountId) }
+    }
+
+    fun exportBackup(password: String) {
+        launchSafe {
+            if (password.length < 6) {
+                error("Use a passphrase of at least 6 characters.")
+                return@launchSafe
+            }
+            backup.export(password.toCharArray())
+                .onSuccess { file ->
+                    info("Backup created: ${file.name}")
+                    _share.value = exporter.shareIntent(file, "application/octet-stream")
+                }
+                .onFailure { error(it.message ?: "Backup failed.") }
+        }
+    }
+
+    fun importBackup(bytes: ByteArray, password: String) {
+        launchSafe {
+            backup.import(bytes, password.toCharArray())
+                .onSuccess { count -> info("Restored $count record(s).") }
+                .onFailure { failure ->
+                    val message = if (failure is com.familyfinance.app.core.backup.BackupCodec.WrongPassphrase) {
+                        "Wrong passphrase, or the file is not a valid backup."
+                    } else {
+                        failure.message ?: "Restore failed."
+                    }
+                    error(message)
+                }
+        }
     }
 
     fun setTheme(mode: String) {
@@ -224,6 +255,19 @@ fun SettingsScreen(
     ) { result ->
         if (result[android.Manifest.permission.RECEIVE_SMS] == true) {
             viewModel.setCaptureFromSms(true)
+        }
+    }
+
+    var backupDialog by remember { mutableStateOf<String?>(null) }
+    var pendingImportBytes by remember { mutableStateOf<ByteArray?>(null) }
+    val backupFilePicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.GetContent(),
+    ) { uri ->
+        if (uri != null) {
+            runCatching {
+                pendingImportBytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
+                backupDialog = "import"
+            }
         }
     }
 
@@ -361,6 +405,30 @@ fun SettingsScreen(
                 }
             }
 
+            SectionCard(
+                title = "Encrypted backup",
+                subtitle = "AES-256 encrypted file of your own records. Your passphrase is never stored.",
+            ) {
+                OutlinedButton(
+                    onClick = { backupDialog = "export" },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Default.FileDownload, contentDescription = null)
+                    Text("  Export encrypted backup")
+                }
+                OutlinedButton(
+                    onClick = { backupFilePicker.launch("*/*") },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("  Restore from backup")
+                }
+                Text(
+                    "Keep the passphrase safe — without it the backup cannot be opened.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
             SectionCard(title = "Sync") {
                 OutlinedButton(onClick = viewModel::syncNow, modifier = Modifier.fillMaxWidth()) {
                     Text("Sync pending changes now")
@@ -407,6 +475,49 @@ fun SettingsScreen(
             dismissButton = { TextButton(onClick = { confirmSignOut = false }) { Text("Cancel") } },
         )
     }
+
+    backupDialog?.let { mode ->
+        PassphraseDialog(
+            title = if (mode == "export") "Set a backup passphrase" else "Enter the backup passphrase",
+            onDismiss = { backupDialog = null; pendingImportBytes = null },
+            onConfirm = { passphrase ->
+                if (mode == "export") {
+                    viewModel.exportBackup(passphrase)
+                } else {
+                    pendingImportBytes?.let { viewModel.importBackup(it, passphrase) }
+                }
+                backupDialog = null
+                pendingImportBytes = null
+            },
+        )
+    }
+}
+
+@Composable
+private fun PassphraseDialog(
+    title: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var passphrase by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            com.familyfinance.app.ui.components.PlainTextField(
+                value = passphrase,
+                onValueChange = { passphrase = it },
+                label = "Passphrase (min 6 characters)",
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(passphrase) },
+                enabled = passphrase.length >= 6,
+            ) { Text("Continue") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable
