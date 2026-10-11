@@ -48,6 +48,7 @@ class AppViewModel @Inject constructor(
     private val transactions: TransactionRepository,
     private val lockManager: BiometricLockManager,
     private val reminderScheduler: com.familyfinance.app.reminder.ReminderScheduler,
+    private val pushRegistrar: com.familyfinance.app.notifications.PushRegistrar,
 ) : ViewModel() {
 
     val state: StateFlow<AppState> = session.currentUser
@@ -86,6 +87,7 @@ class AppViewModel @Inject constructor(
                 }
                 reminderScheduler.scheduleDaily()
                 reminderScheduler.runNow()
+                pushRegistrar.register()
                 _locked.value = lockEnabled.value
             }
         }

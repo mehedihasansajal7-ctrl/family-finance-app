@@ -22,12 +22,13 @@
  * performed on an amount anywhere in this file.
  */
 
-const { onDocumentWritten } = require("firebase-functions/v2/firestore");
+const { onDocumentWritten, onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const { getMessaging } = require("firebase-admin/messaging");
 const logger = require("firebase-functions/logger");
 
 initializeApp();
@@ -418,3 +419,44 @@ exports.redeemInvitation = onCall(async (request) => {
   logger.info("Invitation redeemed", { familyId: familyRef.id, uid });
   return { familyId: familyRef.id };
 });
+
+// =============================================================================
+// Chat push notifications
+//
+// When a member posts to the family chat, notify every OTHER member's devices. Device tokens are
+// gathered server-side from each member's private users/{uid}/devices subcollection, which a client
+// can only read for itself. Only the message text (or "Photo") is sent - never a balance.
+// =============================================================================
+exports.onChatMessage = onDocumentCreated(
+  "families/{familyId}/chatMessages/{messageId}",
+  async (event) => {
+    const snapshot = event.data;
+    const data = snapshot && snapshot.data ? snapshot.data() : {};
+    const familyId = event.params.familyId;
+    const senderUid = data.senderUid;
+    if (!senderUid) return;
+
+    const members = await db.collection("families").doc(familyId).collection("members").get();
+    const tokens = [];
+    for (const member of members.docs) {
+      if (member.id === senderUid) continue;
+      const devices = await db.collection("users").doc(member.id).collection("devices").get();
+      devices.forEach((doc) => {
+        const token = doc.data().token;
+        if (token) tokens.push(token);
+      });
+    }
+    if (tokens.length === 0) return;
+
+    const senderName = data.senderName || "A family member";
+    const text = typeof data.text === "string" ? data.text.trim() : "";
+    const body = text.length > 0 ? text.slice(0, 140) : "Photo";
+
+    await getMessaging().sendEachForMulticast({
+      tokens,
+      notification: { title: senderName, body },
+      data: { type: "chat", familyId },
+      android: { priority: "high", notification: { channelId: "reminders" } },
+    });
+  },
+);

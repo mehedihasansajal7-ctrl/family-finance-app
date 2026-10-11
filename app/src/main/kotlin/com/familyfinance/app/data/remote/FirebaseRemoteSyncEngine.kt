@@ -216,6 +216,20 @@ class FirebaseRemoteSyncEngine @Inject constructor(
         Unit
     }
 
+    override suspend fun registerDeviceToken(token: String): Outcome<Unit> = guard(null) {
+        val owner = uid ?: return@guard Unit
+        db.collection("users").document(owner).collection("devices").document(token)
+            .set(
+                mapOf(
+                    "token" to token,
+                    "platform" to "android",
+                    "updatedAt" to time.nowMillis(),
+                ),
+                SetOptions.merge(),
+            ).await()
+        Unit
+    }
+
     override fun observeChatReads(familyId: String): Flow<List<ChatReadState>> = callbackFlow {
         val registration = familyCollection(familyId, COL_CHAT_READS)
             ?.addSnapshotListener { snapshot, error ->

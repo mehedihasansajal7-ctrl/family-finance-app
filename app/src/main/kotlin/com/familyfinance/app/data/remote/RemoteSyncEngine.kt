@@ -57,6 +57,9 @@ interface RemoteSyncEngine {
     fun observeChatReads(familyId: String): kotlinx.coroutines.flow.Flow<List<ChatReadState>> =
         kotlinx.coroutines.flow.emptyFlow()
 
+    /** Registers this device's FCM token under the signed-in user, for chat push notifications. */
+    suspend fun registerDeviceToken(token: String): Outcome<Unit> = Outcome.Success(Unit)
+
     suspend fun pushSplit(split: FamilyExpenseSplit): Outcome<Unit>
     suspend fun deleteSplit(familyId: String, splitId: String): Outcome<Unit>
     fun observeSplits(familyId: String): kotlinx.coroutines.flow.Flow<List<FamilyExpenseSplit>> =

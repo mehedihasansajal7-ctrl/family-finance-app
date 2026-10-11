@@ -18,8 +18,8 @@ android {
         applicationId = "com.familyfinance.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 20
-        versionName = "2.5.0"
+        versionCode = 21
+        versionName = "2.6.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -153,6 +153,7 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.storage)
+    implementation(libs.firebase.messaging)
     implementation(libs.play.services.auth)
     implementation(libs.credentials.play.services.auth)
     implementation(libs.googleid)
