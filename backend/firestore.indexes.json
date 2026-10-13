@@ -25,25 +25,11 @@
       ]
     },
     {
-      "collectionGroup": "transactions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "clientId", "order": "ASCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "bills",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "dueEpochDay", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "invitations",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        { "fieldPath": "code", "order": "ASCENDING" }
       ]
     }
   ],
