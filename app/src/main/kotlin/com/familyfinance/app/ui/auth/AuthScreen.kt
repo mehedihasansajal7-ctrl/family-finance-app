@@ -158,19 +158,6 @@ fun AuthScreen(
         ) {
             Spacer(Modifier.height(24.dp))
 
-            Box(
-                modifier = Modifier
-                    .size(88.dp)
-                    .clip(MaterialTheme.shapes.large)
-                    .background(MaterialTheme.colorScheme.primary),
-                contentAlignment = Alignment.Center,
-            ) {
-                androidx.compose.foundation.Image(
-                    painter = painterResource(R.drawable.ic_launcher_foreground),
-                    contentDescription = "Family Finance logo",
-                    modifier = Modifier.size(88.dp),
-                )
-            }
             Text(
                 "Family Finance",
                 style = MaterialTheme.typography.headlineMedium,
