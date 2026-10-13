@@ -46,3 +46,6 @@ Thumbs.db
 
 # Optional real release keystore config
 keystore.properties
+
+# Admin SDK service-account keys (full-admin secret)
+*firebase-adminsdk*.json
