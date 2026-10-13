@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -138,6 +139,13 @@ fun ChatScreen(
     var replyTarget by remember { mutableStateOf<FamilyChatMessage?>(null) }
     var actionTarget by remember { mutableStateOf<FamilyChatMessage?>(null) }
     var zoomTarget by remember { mutableStateOf<String?>(null) }
+    var searchOpen by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    val visibleMessages = if (searchQuery.isBlank()) {
+        messages
+    } else {
+        messages.filter { it.text.contains(searchQuery, ignoreCase = true) }
+    }
     val listState = rememberLazyListState()
     val host = rememberMessageHost()
     val context = LocalContext.current
@@ -163,7 +171,19 @@ fun ChatScreen(
         snackbarHost = { SnackbarHost(host) },
         topBar = {
             TopAppBar(
-                title = { Text("Family chat") },
+                title = {
+                    if (searchOpen) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = { Text("Search messages") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    } else {
+                        Text("Family chat")
+                    }
+                },
                 navigationIcon = onBack?.let { back ->
                     {
                         IconButton(onClick = back) {
@@ -171,6 +191,19 @@ fun ChatScreen(
                         }
                     }
                 } ?: {},
+                actions = {
+                    IconButton(
+                        onClick = {
+                            if (searchOpen) searchQuery = ""
+                            searchOpen = !searchOpen
+                        },
+                    ) {
+                        Icon(
+                            if (searchOpen) Icons.Default.Close else Icons.Default.Search,
+                            contentDescription = if (searchOpen) "Close search" else "Search messages",
+                        )
+                    }
+                },
             )
         },
         bottomBar = {
@@ -220,15 +253,22 @@ fun ChatScreen(
             }
         },
     ) { padding ->
-        if (messages.isEmpty()) {
+        if (visibleMessages.isEmpty()) {
             Column(
                 modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("No messages yet", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "Start a conversation with your family. Synced history stays available offline.",
+                    if (searchQuery.isBlank()) "No messages yet" else "No matching messages",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    if (searchQuery.isBlank()) {
+                        "Start a conversation with your family. Synced history stays available offline."
+                    } else {
+                        "Try a different word."
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -240,7 +280,7 @@ fun ChatScreen(
                 contentPadding = PaddingValues(12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                items(messages, key = { it.id }) { message ->
+                items(visibleMessages, key = { it.id }) { message ->
                     val isMine = message.senderUid == currentUid
                     val seen = if (isMine) {
                         reads.any { it.uid != currentUid && it.lastReadAt >= message.createdAt }

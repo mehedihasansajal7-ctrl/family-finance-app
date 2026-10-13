@@ -96,6 +96,9 @@ class SettingsViewModel @Inject constructor(
     val bengaliDigits: StateFlow<Boolean> = session.bengaliDigitsEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    val fontScale: StateFlow<Float> = session.fontScale
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 1f)
+
     val themeMode: StateFlow<String> = session.themeMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SessionManager.THEME_SYSTEM)
 
@@ -118,6 +121,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setBengaliDigits(enabled: Boolean) {
         launchSafe { session.setBengaliDigits(enabled) }
+    }
+
+    fun setFontScale(value: Float) {
+        launchSafe { session.setFontScale(value) }
     }
 
     fun setCaptureFromSms(enabled: Boolean) {
@@ -242,6 +249,7 @@ fun SettingsScreen(
     val host = rememberMessageHost()
     val biometric by viewModel.biometricEnabled.collectAsState()
     val bengali by viewModel.bengaliDigits.collectAsState()
+    val fontScale by viewModel.fontScale.collectAsState()
     val theme by viewModel.themeMode.collectAsState()
     val captureSms by viewModel.captureFromSms.collectAsState()
     val defaultSmsAccount by viewModel.defaultSmsAccountId.collectAsState()
@@ -327,10 +335,32 @@ fun SettingsScreen(
                         SessionManager.THEME_SYSTEM,
                         SessionManager.THEME_LIGHT,
                         SessionManager.THEME_DARK,
+                        SessionManager.THEME_AMOLED,
                     ),
                     selected = theme,
-                    optionLabel = { it.replaceFirstChar { c -> c.uppercase() } },
+                    optionLabel = { mode ->
+                        when (mode) {
+                            SessionManager.THEME_LIGHT -> "Light"
+                            SessionManager.THEME_DARK -> "Dark"
+                            SessionManager.THEME_AMOLED -> "AMOLED"
+                            else -> "System"
+                        }
+                    },
                     onSelect = viewModel::setTheme,
+                )
+                Text("Font size", style = MaterialTheme.typography.bodyMedium)
+                SegmentedSelector(
+                    options = listOf(0.85f, 1f, 1.15f, 1.3f),
+                    selected = fontScale,
+                    optionLabel = { scale ->
+                        when {
+                            scale < 1f -> "Small"
+                            scale > 1.25f -> "Largest"
+                            scale > 1.05f -> "Large"
+                            else -> "Default"
+                        }
+                    },
+                    onSelect = viewModel::setFontScale,
                 )
                 ToggleRow(
                     title = "Bengali numerals",

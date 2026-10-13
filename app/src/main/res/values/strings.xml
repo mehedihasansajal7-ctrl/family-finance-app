@@ -2,4 +2,8 @@
 <resources>
     <string name="app_name">Family Finance</string>
     <string name="app_name_bn">পারিবারিক হিসাব</string>
+    <string name="shortcut_add_short">Add expense</string>
+    <string name="shortcut_add_long">Add an expense or income</string>
+    <string name="shortcut_chat_short">Family chat</string>
+    <string name="shortcut_chat_long">Open family chat</string>
 </resources>

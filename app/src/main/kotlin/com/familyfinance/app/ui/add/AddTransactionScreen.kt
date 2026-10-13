@@ -18,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -160,6 +161,18 @@ class AddTransactionViewModel @Inject constructor(
         if (categoryId == null) {
             com.familyfinance.app.domain.usecase.CategorySuggester.suggest(value, type)?.let { categoryId = it }
         }
+    }
+
+    /** Fills the form from a spoken phrase, e.g. "lunch 250 taka". */
+    fun applySpoken(text: String) {
+        val clean = text.trim()
+        if (clean.isBlank()) return
+        Regex("""\d[\d,]*(?:\.\d{1,2})?""").find(clean)?.value?.let { amountRaw = it.replace(",", "") }
+        if (note.isBlank()) note = clean
+        if (categoryId == null) {
+            com.familyfinance.app.domain.usecase.CategorySuggester.suggest(clean, type)?.let { categoryId = it }
+        }
+        validationMessage = null
     }
     fun onRecurring(value: Boolean) { isRecurring = value }
     fun onRecurrence(value: RecurrenceFrequency) { recurrence = value }
@@ -347,6 +360,17 @@ fun AddTransactionScreen(
         if (uri != null) viewModel.scanReceipt(uri)
     }
 
+    val voiceLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            val spoken = result.data
+                ?.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS)
+                ?.firstOrNull()
+            if (!spoken.isNullOrBlank()) viewModel.applySpoken(spoken)
+        }
+    }
+
     androidx.compose.runtime.LaunchedEffect(viewModel.saved) {
         if (viewModel.saved) onDone()
     }
@@ -380,6 +404,27 @@ fun AddTransactionScreen(
             )
 
             SectionCard(title = "Details") {
+                OutlinedButton(
+                    onClick = {
+                        val intent = android.content.Intent(
+                            android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH,
+                        ).apply {
+                            putExtra(
+                                android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                                android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
+                            )
+                            putExtra(
+                                android.speech.RecognizerIntent.EXTRA_PROMPT,
+                                "Say something like: lunch 250 taka",
+                            )
+                        }
+                        runCatching { voiceLauncher.launch(intent) }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Default.Mic, contentDescription = null)
+                    Text("  Speak to add")
+                }
                 MoneyField(
                     value = viewModel.amountRaw,
                     onValueChange = viewModel::onAmount,

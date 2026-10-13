@@ -11,7 +11,9 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.Density
 import androidx.core.view.WindowCompat
 
 /**
@@ -113,9 +115,17 @@ private val DarkScheme = darkColorScheme(
 fun FamilyFinanceTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     bengaliDigits: Boolean = false,
+    amoled: Boolean = false,
+    fontScale: Float = 1f,
     content: @Composable () -> Unit,
 ) {
-    val scheme = if (darkTheme) DarkScheme else LightScheme
+    val base = if (darkTheme) DarkScheme else LightScheme
+    // AMOLED: true black so the dark theme can save power on OLED panels.
+    val scheme = if (amoled) {
+        base.copy(background = Color(0xFF000000), surface = Color(0xFF000000))
+    } else {
+        base
+    }
     val semantics = if (darkTheme) DarkSemanticColors else LightSemanticColors
 
     val view = LocalView.current
@@ -127,9 +137,12 @@ fun FamilyFinanceTheme(
         }
     }
 
+    val density = LocalDensity.current
     CompositionLocalProvider(
         LocalSemanticColors provides semantics,
         LocalBengaliDigits provides bengaliDigits,
+        // Scales every `sp` size app-wide, which is how the font-size setting takes effect.
+        LocalDensity provides Density(density.density, fontScale = fontScale),
     ) {
         MaterialTheme(
             colorScheme = scheme,

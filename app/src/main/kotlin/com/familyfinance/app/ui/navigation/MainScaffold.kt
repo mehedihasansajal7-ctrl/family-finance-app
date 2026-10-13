@@ -70,6 +70,7 @@ fun MainScaffold(
     user: UserProfile,
     onSignOut: () -> Unit,
     openAddOnStart: Boolean = false,
+    openChatOnStart: Boolean = false,
 ) {
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -77,6 +78,9 @@ fun MainScaffold(
 
     androidx.compose.runtime.LaunchedEffect(openAddOnStart) {
         if (openAddOnStart) showAddSheet = true
+    }
+    androidx.compose.runtime.LaunchedEffect(openChatOnStart) {
+        if (openChatOnStart) navController.navigate(Routes.CHAT) { launchSingleTop = true }
     }
 
     val backStackEntry by navController.currentBackStackEntryAsState()

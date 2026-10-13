@@ -70,6 +70,16 @@ class AppViewModel @Inject constructor(
     val themeMode: StateFlow<String> = session.themeMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SessionManager.THEME_SYSTEM)
 
+    val fontScale: StateFlow<Float> = session.fontScale
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 1f)
+
+    val onboardingDone: StateFlow<Boolean> = session.onboardingDone
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    fun completeOnboarding() {
+        viewModelScope.launch { session.setOnboardingDone(true) }
+    }
+
     private val _locked = MutableStateFlow(false)
     val locked: StateFlow<Boolean> = _locked.asStateFlow()
 
@@ -128,17 +138,24 @@ class AppViewModel @Inject constructor(
  * land in the right place without special cases.
  */
 @Composable
-fun AppRoot(openAdd: Boolean = false, viewModel: AppViewModel = hiltViewModel()) {
+fun AppRoot(
+    openAdd: Boolean = false,
+    openChat: Boolean = false,
+    viewModel: AppViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsState()
     val locked by viewModel.locked.collectAsState()
     val bengali by viewModel.bengaliDigits.collectAsState()
     val themeMode by viewModel.themeMode.collectAsState()
+    val fontScale by viewModel.fontScale.collectAsState()
+    val onboardingDone by viewModel.onboardingDone.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
     LocalContext.current
 
+    val amoled = themeMode == SessionManager.THEME_AMOLED
     val darkTheme = when (themeMode) {
         SessionManager.THEME_LIGHT -> false
-        SessionManager.THEME_DARK -> true
+        SessionManager.THEME_DARK, SessionManager.THEME_AMOLED -> true
         else -> androidx.compose.foundation.isSystemInDarkTheme()
     }
 
@@ -154,7 +171,12 @@ fun AppRoot(openAdd: Boolean = false, viewModel: AppViewModel = hiltViewModel())
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    com.familyfinance.app.ui.theme.FamilyFinanceTheme(darkTheme = darkTheme, bengaliDigits = bengali) {
+    com.familyfinance.app.ui.theme.FamilyFinanceTheme(
+        darkTheme = darkTheme,
+        bengaliDigits = bengali,
+        amoled = amoled,
+        fontScale = fontScale,
+    ) {
         when (val current = state) {
             AppState.Loading -> LoadingState(message = "Preparing your ledger…")
 
@@ -162,13 +184,22 @@ fun AppRoot(openAdd: Boolean = false, viewModel: AppViewModel = hiltViewModel())
 
             is AppState.NeedsFamily -> FamilySetupScreen(user = current.user)
 
-            is AppState.Ready -> AppLockGate(
-                locked = locked,
-                onUnlocked = viewModel::unlock,
-                onSignOut = viewModel::signOut,
-                manager = hiltLockManager(),
-            ) {
-                MainScaffold(user = current.user, onSignOut = viewModel::signOut, openAddOnStart = openAdd)
+            is AppState.Ready -> if (!onboardingDone) {
+                com.familyfinance.app.ui.onboarding.OnboardingScreen(onDone = viewModel::completeOnboarding)
+            } else {
+                AppLockGate(
+                    locked = locked,
+                    onUnlocked = viewModel::unlock,
+                    onSignOut = viewModel::signOut,
+                    manager = hiltLockManager(),
+                ) {
+                    MainScaffold(
+                        user = current.user,
+                        onSignOut = viewModel::signOut,
+                        openAddOnStart = openAdd,
+                        openChatOnStart = openChat,
+                    )
+                }
             }
         }
     }

@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -39,6 +40,8 @@ class SessionManager(private val context: Context) {
         val BENGALI_DIGITS = booleanPreferencesKey("bengali_digits")
         val CAPTURE_SMS = booleanPreferencesKey("capture_sms")
         val DEFAULT_SMS_ACCOUNT = stringPreferencesKey("default_sms_account")
+        val FONT_SCALE = floatPreferencesKey("font_scale")
+        val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val LAST_ACTIVE = longPreferencesKey("last_active_at")
         val LAST_SYNC = longPreferencesKey("last_sync_at")
@@ -61,6 +64,8 @@ class SessionManager(private val context: Context) {
     val bengaliDigitsEnabled: Flow<Boolean> = context.sessionDataStore.data.map { it[Keys.BENGALI_DIGITS] ?: false }
     val captureFromSms: Flow<Boolean> = context.sessionDataStore.data.map { it[Keys.CAPTURE_SMS] ?: false }
     val defaultSmsAccountId: Flow<String?> = context.sessionDataStore.data.map { it[Keys.DEFAULT_SMS_ACCOUNT] }
+    val fontScale: Flow<Float> = context.sessionDataStore.data.map { it[Keys.FONT_SCALE] ?: 1f }
+    val onboardingDone: Flow<Boolean> = context.sessionDataStore.data.map { it[Keys.ONBOARDING_DONE] ?: false }
     val themeMode: Flow<String> = context.sessionDataStore.data.map { it[Keys.THEME_MODE] ?: THEME_SYSTEM }
     val lastActiveAt: Flow<Long> = context.sessionDataStore.data.map { it[Keys.LAST_ACTIVE] ?: 0L }
     val lastSyncAt: Flow<Long> = context.sessionDataStore.data.map { it[Keys.LAST_SYNC] ?: 0L }
@@ -104,6 +109,14 @@ class SessionManager(private val context: Context) {
         }
     }
 
+    suspend fun setFontScale(scale: Float) {
+        context.sessionDataStore.edit { it[Keys.FONT_SCALE] = scale }
+    }
+
+    suspend fun setOnboardingDone(done: Boolean) {
+        context.sessionDataStore.edit { it[Keys.ONBOARDING_DONE] = done }
+    }
+
     suspend fun setThemeMode(mode: String) {
         context.sessionDataStore.edit { it[Keys.THEME_MODE] = mode }
     }
@@ -141,6 +154,7 @@ class SessionManager(private val context: Context) {
         const val THEME_SYSTEM = "system"
         const val THEME_LIGHT = "light"
         const val THEME_DARK = "dark"
+        const val THEME_AMOLED = "amoled"
 
         /** Idle timeout before the app re-locks. */
         const val IDLE_TIMEOUT_MILLIS = 5 * 60 * 1000L
