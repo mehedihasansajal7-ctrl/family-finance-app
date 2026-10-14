@@ -88,6 +88,10 @@ class MembersViewModel @Inject constructor(
     private val _invitation = MutableStateFlow<FamilyInvitation?>(null)
     val invitation: StateFlow<FamilyInvitation?> = _invitation
 
+    val familyId: StateFlow<String?> = session.currentUser
+        .map { it?.familyId }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     val canManage: StateFlow<Boolean> = session.currentUser
         .map { it?.role?.canManageFamily == true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
@@ -168,6 +172,7 @@ fun MembersScreen(
     val invitation by viewModel.invitation.collectAsState()
     val canManage by viewModel.canManage.collectAsState()
     val isOwner by viewModel.isOwner.collectAsState()
+    val familyId by viewModel.familyId.collectAsState()
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
 
@@ -202,6 +207,32 @@ fun MembersScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            item {
+                familyId?.let { id ->
+                    SectionCard(
+                        title = "Family ID",
+                        subtitle = "A member joins from their own phone by pasting this in Join → Family ID.",
+                    ) {
+                        Text(id, style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth())
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = { clipboard.setText(AnnotatedString(id)) }) {
+                                Text("Copy ID")
+                            }
+                            OutlinedButton(onClick = {
+                                val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(
+                                        android.content.Intent.EXTRA_TEXT,
+                                        "Join our family on Family Finance.\n\n1. Install the app\n2. Join with this Family ID:\n$id",
+                                    )
+                                }
+                                context.startActivity(android.content.Intent.createChooser(intent, "Share family ID"))
+                            }) { Text("Share") }
+                        }
+                    }
+                }
+            }
+
             item {
                 Text(
                     "Members see the shared family dashboard. Nobody — not even the owner — can see " +

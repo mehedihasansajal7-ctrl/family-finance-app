@@ -108,13 +108,18 @@ service cloud.firestore {
       // deciding on; Firestore's `||` short-circuits, so `isMember` is not consulted for self.
       allow read: if signedIn() && (uid == me() || isMember(familyId));
 
-      // Joining. A user may only create their own membership, and only as a plain active member —
-      // self-promotion to admin is impossible. Single-use invite codes are validated and consumed
-      // by the `redeemInvitation` Cloud Function, which is the supported join path.
+      // Joining. A user may create only their own membership. A plain member joins directly with the
+      // family ID; the family's OWNER may create their own owner membership, verified against the
+      // family document — that is how the creator gets access on a fresh device without a Cloud
+      // Function. Self-promotion to admin is still impossible.
       allow create: if signedIn()
         && uid == me()
-        && request.resource.data.role == 'member'
-        && request.resource.data.status == 'active';
+        && request.resource.data.status == 'active'
+        && (
+             request.resource.data.role == 'member'
+             || (request.resource.data.role == 'owner'
+                 && get(/databases/$(database)/documents/families/$(familyId)).data.ownerUid == me())
+           );
 
       // Admins may edit members but not themselves (no self-promotion); the owner may do anything
       // except demote or remove themselves.

@@ -230,6 +230,20 @@ class FirebaseRemoteSyncEngine @Inject constructor(
         Unit
     }
 
+    override suspend fun fetchFamily(familyId: String): Family? = runCatching {
+        val snapshot = db.collection("families").document(familyId).get().await()
+        if (!snapshot.exists()) null else Family(
+            id = familyId,
+            name = snapshot.getString("name") ?: "Family",
+            photoUrl = snapshot.getString("photoUrl"),
+            currencyCode = snapshot.getString("currencyCode") ?: "BDT",
+            timezone = snapshot.getString("timezone") ?: "Asia/Dhaka",
+            ownerUid = snapshot.getString("ownerUid") ?: "",
+            createdAt = snapshot.getLong("createdAt") ?: 0L,
+            netWorthEnabled = snapshot.getBoolean("netWorthEnabled") ?: false,
+        )
+    }.getOrNull()
+
     override fun observeChatReads(familyId: String): Flow<List<ChatReadState>> = callbackFlow {
         val registration = familyCollection(familyId, COL_CHAT_READS)
             ?.addSnapshotListener { snapshot, error ->

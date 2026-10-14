@@ -66,6 +66,9 @@ interface FamilyRepository {
 
     suspend fun revokeInvitation(invitationId: String): Outcome<Unit>
     suspend fun redeemInvitation(code: String, uid: String): Outcome<Family>
+
+    /** Joins a family directly by its ID (the cross-device path that needs no Cloud Function). */
+    suspend fun joinFamily(familyId: String, uid: String): Outcome<Family>
     suspend fun removeMember(familyId: String, uid: String): Outcome<Unit>
     suspend fun updateRole(familyId: String, uid: String, role: Role): Outcome<Unit>
 }

@@ -59,6 +59,8 @@ class FamilySetupViewModel @Inject constructor(
         private set
     var inviteCode by mutableStateOf("")
         private set
+    var familyIdToJoin by mutableStateOf("")
+        private set
     var message by mutableStateOf<String?>(null)
         private set
     var isError by mutableStateOf(false)
@@ -71,6 +73,7 @@ class FamilySetupViewModel @Inject constructor(
 
     fun onFamilyName(value: String) { familyName = value }
     fun onInviteCode(value: String) { inviteCode = value.uppercase() }
+    fun onFamilyIdToJoin(value: String) { familyIdToJoin = value.trim() }
 
     fun submit(user: UserProfile) {
         message = null
@@ -89,9 +92,17 @@ class FamilySetupViewModel @Inject constructor(
             }
 
             FamilySetupMode.JOIN -> {
+                if (familyIdToJoin.isNotBlank()) {
+                    run(onSuccess = { result ->
+                        val family = result as? com.familyfinance.app.domain.model.Family
+                        isError = false
+                        message = "Joined \"${family?.name.orEmpty()}\"."
+                    }) { families.joinFamily(familyIdToJoin, user.uid) }
+                    return
+                }
                 if (inviteCode.isBlank()) {
                     isError = true
-                    message = "Enter the invitation code you were given."
+                    message = "Paste the family ID, or enter an invitation code."
                     return
                 }
                 run(onSuccess = { result ->
@@ -166,13 +177,19 @@ fun FamilySetupScreen(
 
                 FamilySetupMode.JOIN -> {
                     SectionCard(
-                        title = "Join with a code",
-                        subtitle = "Codes expire and can be revoked by the family owner.",
+                        title = "Join your family",
+                        subtitle = "Paste the family ID the family owner shares.",
                     ) {
+                        PlainTextField(
+                            value = viewModel.familyIdToJoin,
+                            onValueChange = viewModel::onFamilyIdToJoin,
+                            label = "Family ID",
+                            supportingText = "Owner: More → Family ID → Copy",
+                        )
                         PlainTextField(
                             value = viewModel.inviteCode,
                             onValueChange = viewModel::onInviteCode,
-                            label = "Invitation code",
+                            label = "Invitation code (optional)",
                             supportingText = "Format: ABCD-1234",
                         )
                         Card(

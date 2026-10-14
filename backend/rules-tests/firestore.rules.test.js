@@ -509,6 +509,28 @@ describe("family administration", () => {
     });
     await assertFails(deleteDoc(doc(carol(), "families", FAMILY, "members", "uid-admin2")));
   });
+
+  it("lets the family owner create their own owner membership", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "families", "family-own"), {
+        familyId: "family-own", name: "Own", ownerUid: OWNER, currencyCode: "BDT", createdAt: 1,
+      });
+    });
+    await assertSucceeds(setDoc(doc(owner(), "families", "family-own", "members", OWNER), {
+      uid: OWNER, fullName: "Owner", role: "owner", status: "active", updatedAt: 1,
+    }));
+  });
+
+  it("stops a non-owner claiming the owner role", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "families", "family-own2"), {
+        familyId: "family-own2", name: "Own2", ownerUid: OWNER, currencyCode: "BDT", createdAt: 1,
+      });
+    });
+    await assertFails(setDoc(doc(alice(), "families", "family-own2", "members", ALICE), {
+      uid: ALICE, fullName: "Alice", role: "owner", status: "active", updatedAt: 1,
+    }));
+  });
 });
 
 // =============================================================================

@@ -98,7 +98,25 @@ class FamilyRepositoryImpl @Inject constructor(
         )
 
         session.saveUser(user.copy(familyId = familyId, role = Role.OWNER))
-        if (engine.isConfigured) engine.pushFamily(family)
+        if (engine.isConfigured) {
+            engine.pushFamily(family)
+            // Write the owner's membership too — the rules recognise the owner from this document, so
+            // without it the creator would be locked out of the family's shared data.
+            engine.pushMemberProfile(
+                MemberProfile(
+                    uid = ownerUid,
+                    familyId = familyId,
+                    fullName = user.displayName.ifBlank { user.email.substringBefore('@') },
+                    photoUrl = user.photoUrl,
+                    email = user.email,
+                    relationship = "Self",
+                    shareProfileWithFamily = true,
+                    updatedAt = now,
+                ),
+                Role.OWNER,
+                MemberStatus.ACTIVE,
+            )
+        }
         return Outcome.Success(family)
     }
 
@@ -179,6 +197,53 @@ class FamilyRepositoryImpl @Inject constructor(
         )
         familyDao.incrementInvitationUse(invitation.id)
         session.saveUser(user.copy(familyId = family.id, role = Role.MEMBER))
+        return Outcome.Success(family)
+    }
+
+    override suspend fun joinFamily(familyId: String, uid: String): Outcome<Family> {
+        val user = session.currentUserOnce() ?: return Outcome.Failure(AppError.permission())
+        if (user.uid != uid) return Outcome.Failure(AppError.permission())
+        if (!user.familyId.isNullOrBlank()) {
+            return Outcome.Failure(AppError.conflict("You already belong to a family."))
+        }
+        val id = familyId.trim()
+        if (id.isBlank()) return Outcome.Failure(AppError.validation("Paste the family ID."))
+
+        val now = time.nowMillis()
+        val profile = MemberProfile(
+            uid = uid,
+            familyId = id,
+            fullName = user.displayName.ifBlank { user.email.substringBefore('@') },
+            photoUrl = user.photoUrl,
+            email = user.email,
+            shareProfileWithFamily = true,
+            updatedAt = now,
+        )
+
+        if (engine.isConfigured) {
+            // Writing the membership first is what grants read access to the family document.
+            val pushed = engine.pushMemberProfile(profile, Role.MEMBER, MemberStatus.ACTIVE)
+            if (pushed.isFailure) {
+                return Outcome.Failure(AppError.validation("Could not join. Check the family ID."))
+            }
+        }
+
+        val remote = if (engine.isConfigured) engine.fetchFamily(id) else null
+        if (engine.isConfigured && remote == null) {
+            return Outcome.Failure(AppError.notFound("No family with that ID."))
+        }
+        val family = remote ?: Family(
+            id = id,
+            name = "Family",
+            currencyCode = "BDT",
+            timezone = AppTime.ZONE.id,
+            ownerUid = "",
+            createdAt = now,
+        )
+
+        familyDao.upsert(family.toEntity())
+        familyDao.upsertMember(profile.toEntity(Role.MEMBER, MemberStatus.ACTIVE))
+        session.saveUser(user.copy(familyId = id, role = Role.MEMBER))
         return Outcome.Success(family)
     }
 

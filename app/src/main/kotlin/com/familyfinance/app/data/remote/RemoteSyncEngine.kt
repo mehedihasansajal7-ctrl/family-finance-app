@@ -60,6 +60,9 @@ interface RemoteSyncEngine {
     /** Registers this device's FCM token under the signed-in user, for chat push notifications. */
     suspend fun registerDeviceToken(token: String): Outcome<Unit> = Outcome.Success(Unit)
 
+    /** Reads a family document. Used right after joining, once membership has granted read access. */
+    suspend fun fetchFamily(familyId: String): Family? = null
+
     suspend fun pushSplit(split: FamilyExpenseSplit): Outcome<Unit>
     suspend fun deleteSplit(familyId: String, splitId: String): Outcome<Unit>
     fun observeSplits(familyId: String): kotlinx.coroutines.flow.Flow<List<FamilyExpenseSplit>> =
