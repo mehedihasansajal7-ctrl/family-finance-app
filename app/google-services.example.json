@@ -1,0 +1,158 @@
+{
+  "project_info": {
+    "project_number": "000000000000",
+    "project_id": "your-firebase-project-id",
+    "storage_bucket": "your-firebase-project-id.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "android_client_info": {
+          "package_name": "com.familyfinance.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "000000000000-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.familyfinance.app",
+            "certificate_hash": "ce6305d851628d9af6ef2d7bdaecbf8745e1222b"
+          }
+        },
+        {
+          "client_id": "000000000000-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "REPLACE_WITH_YOUR_ANDROID_API_KEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "484447306751-hfjg12vsnlnbcfrltmhl7enmlj6mrmaq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "android_client_info": {
+          "package_name": "com.familyfinance.app.debug"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "000000000000-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.familyfinance.app.debug",
+            "certificate_hash": "ce6305d851628d9af6ef2d7bdaecbf8745e1222b"
+          }
+        },
+        {
+          "client_id": "000000000000-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "REPLACE_WITH_YOUR_ANDROID_API_KEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "484447306751-hfjg12vsnlnbcfrltmhl7enmlj6mrmaq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "android_client_info": {
+          "package_name": "com.familyfinance.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "000000000000-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.familyfinance.app",
+            "certificate_hash": "ce6305d851628d9af6ef2d7bdaecbf8745e1222b"
+          }
+        },
+        {
+          "client_id": "000000000000-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "REPLACE_WITH_YOUR_ANDROID_API_KEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "484447306751-hfjg12vsnlnbcfrltmhl7enmlj6mrmaq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "android_client_info": {
+          "package_name": "com.familyfinance.app.debug"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "000000000000-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.familyfinance.app.debug",
+            "certificate_hash": "ce6305d851628d9af6ef2d7bdaecbf8745e1222b"
+          }
+        },
+        {
+          "client_id": "000000000000-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "REPLACE_WITH_YOUR_ANDROID_API_KEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "484447306751-hfjg12vsnlnbcfrltmhl7enmlj6mrmaq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
