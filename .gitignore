@@ -19,11 +19,10 @@ lint-results*
 
 # Secrets / external config (never commit)
 #
-# NOTE: app/google-services.json IS committed on purpose. It ships as a placeholder with fake
-# identifiers so the project builds and runs out of the box (demo mode). Google's own guidance is
-# that google-services.json is client configuration, not a secret — the protection comes from API-key
-# restrictions and from the security rules, not from hiding this file. If you drop in a real one and
-# would rather not commit it, add it here and adjust the README accordingly.
+# NOTE: the real app/google-services.json is NOT committed (it contains the project's API key
+# and identifiers). Copy the sanitised template first:
+#   cp app/google-services.example.json app/google-services.json   (then fill in your own values)
+
 .env
 *.keystore
 *.jks

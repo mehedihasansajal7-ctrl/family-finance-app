@@ -385,7 +385,8 @@ out of the box. Before publishing:
    ```
 2. Add it to `app/build.gradle.kts` as a `signingConfig` (keep the passwords out of source — use
    `keystore.properties` and add it to `.gitignore`), and point the `release` build type at it.
-3. Replace the placeholder `google-services.json` with the real one.
+3. Copy the sanitised template and fill in your own Firebase values:
+   `cp app/google-services.example.json app/google-services.json`
 4. Deploy the backend: `cd backend && firebase deploy`.
 
 ---
