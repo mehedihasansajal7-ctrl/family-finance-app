@@ -22,6 +22,8 @@ lint-results*
 # NOTE: the real app/google-services.json is NOT committed (it contains the project's API key
 # and identifiers). Copy the sanitised template first:
 #   cp app/google-services.example.json app/google-services.json   (then fill in your own values)
+# The real config stays local; only the sanitised example is tracked.
+app/google-services.json
 
 .env
 *.keystore
