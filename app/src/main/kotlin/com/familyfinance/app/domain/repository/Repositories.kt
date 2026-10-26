@@ -69,6 +69,9 @@ interface FamilyRepository {
 
     /** Joins a family directly by its ID (the cross-device path that needs no Cloud Function). */
     suspend fun joinFamily(familyId: String, uid: String): Outcome<Family>
+
+    /** Re-pushes this device's membership/family if an earlier push was lost. Idempotent. */
+    suspend fun ensureMembership()
     suspend fun removeMember(familyId: String, uid: String): Outcome<Unit>
     suspend fun updateRole(familyId: String, uid: String, role: Role): Outcome<Unit>
 }

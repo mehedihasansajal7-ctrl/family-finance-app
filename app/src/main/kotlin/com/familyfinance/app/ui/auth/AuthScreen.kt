@@ -270,16 +270,6 @@ fun AuthScreen(
                 Text(if (viewModel.mode == AuthMode.SIGN_IN) "Sign in" else "Create account")
             }
 
-            OutlinedButton(
-                onClick = viewModel::googleSignIn,
-                enabled = !viewModel.isDemoMode,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-            ) {
-                Text("Continue with Google")
-            }
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,

@@ -244,7 +244,10 @@ fun MembersScreen(
 
             invitation?.let { active ->
                 item {
-                    SectionCard(title = "Invitation code", subtitle = "Single use · expires ${AppTime.formatEpochDay(0)}") {
+                    SectionCard(
+                        title = "Invitation code (offline only)",
+                        subtitle = "To invite from another phone, share the Family ID above.",
+                    ) {
                         Text(
                             active.code,
                             style = MaterialTheme.typography.headlineSmall,
@@ -258,23 +261,11 @@ fun MembersScreen(
                             OutlinedButton(onClick = {
                                 clipboard.setText(AnnotatedString(active.code))
                             }) { Text("Copy code") }
-                            OutlinedButton(onClick = {
-                                val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(
-                                        android.content.Intent.EXTRA_TEXT,
-                                        com.familyfinance.app.core.AppLinks.inviteMessage(active.code),
-                                    )
-                                }
-                                context.startActivity(
-                                    android.content.Intent.createChooser(intent, "Share invitation")
-                                )
-                            }) { Text("Share invite") }
                             TextButton(onClick = { viewModel.revoke(active) }) { Text("Revoke") }
                         }
                         Text(
-                            "Send this code to the person you are inviting. It can only be used once and can " +
-                                "be revoked at any time. No financial data is shared during joining.",
+                            "The code only works on a device that already has this family's data " +
+                                "(offline/demo mode). A member on their own phone joins with the Family ID.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

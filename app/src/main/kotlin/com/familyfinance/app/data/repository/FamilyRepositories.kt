@@ -247,6 +247,19 @@ class FamilyRepositoryImpl @Inject constructor(
         return Outcome.Success(family)
     }
 
+    override suspend fun ensureMembership() {
+        if (!engine.isConfigured) return
+        val user = session.currentUserOnce() ?: return
+        val familyId = user.familyId ?: return
+        val member = familyDao.findMember(user.uid) ?: return
+        familyDao.find(familyId)?.toDomain()?.let { engine.pushFamily(it) }
+        engine.pushMemberProfile(
+            member.toDomain(),
+            Role.fromId(member.roleId),
+            MemberStatus.fromId(member.statusId),
+        )
+    }
+
     override suspend fun removeMember(familyId: String, uid: String): Outcome<Unit> {
         val user = session.currentUserOnce() ?: return Outcome.Failure(AppError.permission())
         val target = familyDao.findMember(uid)?.toMemberView()

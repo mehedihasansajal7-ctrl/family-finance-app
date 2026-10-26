@@ -49,6 +49,7 @@ class AppViewModel @Inject constructor(
     private val lockManager: BiometricLockManager,
     private val reminderScheduler: com.familyfinance.app.reminder.ReminderScheduler,
     private val pushRegistrar: com.familyfinance.app.notifications.PushRegistrar,
+    private val families: com.familyfinance.app.domain.repository.FamilyRepository,
 ) : ViewModel() {
 
     val state: StateFlow<AppState> = session.currentUser
@@ -98,6 +99,8 @@ class AppViewModel @Inject constructor(
                 reminderScheduler.scheduleDaily()
                 reminderScheduler.runNow()
                 pushRegistrar.register()
+                // Heals a membership/family push that failed earlier (e.g. flaky network on setup).
+                runCatching { families.ensureMembership() }
                 _locked.value = lockEnabled.value
             }
         }
