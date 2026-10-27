@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -50,6 +51,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewModelScope
 import com.familyfinance.app.data.remote.FirebaseConfig
 import com.familyfinance.app.R
 import com.familyfinance.app.ui.common.BaseViewModel
@@ -57,6 +59,7 @@ import com.familyfinance.app.ui.common.ObserveMessages
 import com.familyfinance.app.ui.common.rememberMessageHost
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 enum class AuthMode { SIGN_IN, SIGN_UP }
@@ -64,6 +67,7 @@ enum class AuthMode { SIGN_IN, SIGN_UP }
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val auth: com.familyfinance.app.domain.repository.AuthRepository,
+    private val googleSignInManager: com.familyfinance.app.data.auth.GoogleSignInManager,
     @ApplicationContext context: Context,
 ) : BaseViewModel() {
 
@@ -128,8 +132,26 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    fun googleSignIn() {
-        error("Google Sign-In needs a Firebase project. Add google-services.json to enable it.")
+    fun googleSignIn(activityContext: Context) {
+        if (isDemoMode) {
+            error("Google Sign-In needs a Firebase project. Add google-services.json to enable it.")
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val token = googleSignInManager.idToken(activityContext)
+                when (val result = auth.signInWithGoogle(token)) {
+                    is com.familyfinance.app.core.result.Outcome.Success -> Unit
+                    is com.familyfinance.app.core.result.Outcome.Failure -> error(result.error.message)
+                }
+            } catch (cancelled: androidx.credentials.exceptions.GetCredentialCancellationException) {
+                error("Google sign-in was cancelled.")
+            } catch (missing: androidx.credentials.exceptions.NoCredentialException) {
+                error("No Google account on this device. Add one in Android Settings, or use email.")
+            } catch (unexpected: Exception) {
+                error("Google sign-in failed. Please try again, or use email.")
+            }
+        }
     }
 }
 
@@ -140,6 +162,7 @@ fun AuthScreen(
     val host = rememberMessageHost()
     var passwordVisible by remember { mutableStateOf(false) }
     val busy by viewModel.busy.collectAsState()
+    val context = LocalContext.current
 
     ObserveMessages(viewModel, host)
 
@@ -268,6 +291,16 @@ fun AuthScreen(
                     .height(50.dp),
             ) {
                 Text(if (viewModel.mode == AuthMode.SIGN_IN) "Sign in" else "Create account")
+            }
+
+            OutlinedButton(
+                onClick = { viewModel.googleSignIn(context) },
+                enabled = !viewModel.isDemoMode && !busy,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+            ) {
+                Text("Continue with Google")
             }
 
             Row(
