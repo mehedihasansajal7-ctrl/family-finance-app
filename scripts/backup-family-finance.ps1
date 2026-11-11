@@ -4,7 +4,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 $source = Split-Path -Parent $PSScriptRoot
-$desktop = [Environment]::GetFolderPath("Desktop")
+# OneDrive's synced root moved to D:\OneDrive (2026-10-15); the C: OneDrive folder no longer syncs.
+$syncDesktop = "D:\OneDrive\Desktop"
+$desktop = if (Test-Path -LiteralPath $syncDesktop) { $syncDesktop } else { [Environment]::GetFolderPath("Desktop") }
 if ([string]::IsNullOrWhiteSpace($Target)) {
     $Target = Join-Path $desktop "FamilyFinance-Backup-Latest"
 }
