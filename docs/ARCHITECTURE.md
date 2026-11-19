@@ -181,11 +181,13 @@ Ownership of a financial record is the authenticated uid. A "paid by" field woul
 would have to be trusted, and would be an IDOR waiting to happen. Its absence is a product rule
 *and* the thing that makes the privacy model enforceable.
 
-### The aggregate is server-computed
+### The aggregate is maintained client-side (no Cloud Functions)
 
-Covered in depth in [`SECURITY.md`](SECURITY.md#3-why-the-family-dashboard-is-server-computed). The
-short version: computing it on-device would require shipping every member's private rows to every
-other member's device, which is a leak regardless of what the UI displays.
+Covered in depth in [`SECURITY.md`](SECURITY.md#22-cloud-functions--not-deployed-in-the-free-plan-build).
+The short version: computing the family dashboard by shipping every member's rows to every device
+would be a leak regardless of what the UI displays, so only the aggregate document is shared. The
+original design let a Cloud Function write it; because Cloud Functions require billing, each client
+now adds its own totals to that document in a Firestore transaction instead.
 
 ### Transfers are first-class and excluded from totals
 
@@ -217,11 +219,11 @@ or translating a label can therefore never change what a stored transaction mean
 ledger is not an acceptable failure mode; a schema change must ship a real migration. Schemas are
 exported to `app/schemas/` so migrations are reviewable in a diff.
 
-### The dashboard aggregate is never optimistically patched
+### The dashboard reads the shared aggregate, never another member's rows
 
-After a write, the client does **not** add the amount to the displayed family total. It waits for the
-server-written aggregate. Optimistically patching would mean deriving a family figure from one
-member's row on the wrong device — which is exactly the leak this architecture exists to prevent.
+The Home dashboard renders `families/{id}/aggregates/{yyyy-MM}` only — a document of totals. It never
+derives a family figure from another member's private transaction; each client contributes exactly its
+own amounts to that document and nothing else.
 
 ---
 

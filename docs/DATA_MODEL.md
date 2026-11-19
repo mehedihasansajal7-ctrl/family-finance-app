@@ -12,7 +12,7 @@ Firestore
 │   ├── goals/{goalId}                               shared goals
 │   ├── bills/{billId}                               shared bills
 │   ├── invitations/{invitationId}                   admin-readable only
-│   └── aggregates/{yyyy-MM}                         SERVER-WRITTEN · client read-only
+│   └── aggregates/{yyyy-MM}                         client-maintained totals (no functions deployed)
 │
 └── users/{uid}                                      PRIVATE — owner only, no exception
     ├── profile/main
@@ -230,7 +230,9 @@ constants on `AuditRepository`.
 
 ## 4. Aggregate document
 
-Written only by the Cloud Function. Read-only to clients.
+Maintained by the clients, because Cloud Functions are not deployed on the free plan. Each member
+adds only its own totals in a transaction; the document contains no member attribution, no private
+rows and no account numbers. Reads are allowed to any active member; deletes are denied.
 
 ```
 families/{familyId}/aggregates/{yyyy-MM}

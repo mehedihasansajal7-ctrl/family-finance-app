@@ -44,11 +44,20 @@ rejects a stranger's.
 Verified by 40 emulator tests in `backend/rules-tests`, including explicit denials for a member, an
 admin and the owner reading another member's data.
 
-### 2.2 Cloud Functions — the only writer of family financial data
+### 2.2 Cloud Functions — not deployed in the free-plan build
 
-`families/{familyId}/aggregates/{month}` is `allow write: if false`. The Android app can read the
-aggregate and can never fabricate or edit one; only the Admin SDK (inside a Cloud Function) can
-produce it.
+The original design had a Cloud Function as the only writer of `families/{familyId}/aggregates/{month}`
+(`allow write: if false`). Cloud Functions need the Blaze plan, which this deployment deliberately
+does not use, so the aggregate is now maintained by the members themselves:
+
+- `allow create, update: if isMember(familyId)` — a member adds its own totals (`incrementFamilyAggregate`
+  / `bumpFamilyAggregate`) and never reads another member's rows, which live in `/users/{uid}`.
+- `allow delete: if false` — an aggregate can never be removed, so the dashboard cannot be wiped.
+- `seedFamilyAggregate` writes the caller's own totals once, only when the document is absent.
+
+The consequence is explicit: a member can write a wrong total for their own family. That is accepted
+in exchange for a zero-cost deployment; no private row, member attribution or account number is in
+the document.
 
 ### 2.3 `FamilyAccessPolicy` — a client-side mirror
 
@@ -95,8 +104,8 @@ Two tests defend this:
 - `FamilyAggregateCalculatorTest.the aggregate never carries member attribution` renders an aggregate
   built from distinctive member keys and asserts none of them appear in the output, and that nothing
   resembling `uid`, `memberKey` or `ownerUid` does either.
-- The rules test `aggregate write protection` asserts that a member, an admin and the owner are all
-  denied when writing an aggregate.
+- The rules tests `aggregate writes (client-maintained totals)` assert that a member can create and
+  update their family's aggregate, and that an outsider cannot.
 
 ---
 

@@ -238,20 +238,29 @@ Three layers, in order of authority:
 1. **`backend/firestore.rules`** — the actual enforcement point. `match /users/{uid}/{document=**}`
    grants access on `request.auth.uid == uid` and nothing else. No family role is consulted anywhere
    under `/users`, so an admin's or the owner's request is rejected identically to a stranger's.
-2. **Cloud Functions** — the only writer of the family aggregate. `allow write: if false` on
-   `families/{id}/aggregates/{month}` means the app cannot fabricate or edit an aggregate.
+2. **`families/{id}/aggregates/{month}`** — the aggregate document. In the original design only a
+   Cloud Function wrote it; **Cloud Functions are not deployed** in the free-plan deployment, so
+   members themselves add their own totals to it (`allow create, update: if isMember(...)`), and
+   `allow delete: if false`. The document holds totals only, so a client can neither read another
+   member's rows (they live in the private per-user tree) nor see who contributed what. It can,
+   in principle, write a wrong total for its own family — the trade-off accepted to stay free.
 3. **`FamilyAccessPolicy`** (client, pure Kotlin) — a mirror of the rules so the UI never *attempts* a
    forbidden read. It is tested as a 22-case matrix, but it is not the security boundary.
 
-### Why the aggregate is computed server-side
+### How the aggregate is maintained without Cloud Functions
 
 The family dashboard could have been built by having every client download every member's
 transactions and total them locally. That would leak every member's private rows onto every other
 member's device — through the API response, the local cache, and any network inspection — while the
 UI displayed only totals.
 
-So the aggregate is computed in a Cloud Function, and the **only** family-wide financial document
-that reaches a client is:
+Instead each client adds **only its own** income/expense to the monthly aggregate in a Firestore
+transaction (`incrementFamilyAggregate` on Android, `bumpFamilyAggregate` on the web); editing or
+deleting a transaction applies the reverse delta. When the document is still missing (for example
+after upgrading, or for entries recorded before this existed) `seedFamilyAggregate` writes the
+caller's own totals once, and only if the document is absent, so it can never double count.
+
+The **only** family-wide financial document that reaches a client is:
 
 ```
 families/{familyId}/aggregates/{yyyy-MM}
@@ -286,7 +295,7 @@ families/{familyId}                        shared
   ├ members/{uid}                          role, status, shareable profile fields
   ├ budgets/{id}   goals/{id}   bills/{id} shared family finance
   ├ invitations/{id}                       codes (admin-readable only)
-  └ aggregates/{yyyy-MM}                   SERVER-WRITTEN, aggregate-only
+  └ aggregates/{yyyy-MM}                   client-maintained, aggregate-only (totals only)
 
 users/{uid}/                               PRIVATE — owner only
   ├ profile/main
