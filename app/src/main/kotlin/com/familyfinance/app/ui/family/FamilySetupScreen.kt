@@ -92,33 +92,25 @@ class FamilySetupViewModel @Inject constructor(
             }
 
             FamilySetupMode.JOIN -> {
-                if (familyIdToJoin.isNotBlank()) {
-                    // Accept either a full Family ID or a short invite code like ABCD-1234.
-                    val looksLikeCode = Regex("^[A-Z0-9]{4}-[A-Z0-9]{4}$")
-                        .matches(familyIdToJoin.uppercase())
-                    run(onSuccess = { result ->
-                        val family = result as? com.familyfinance.app.domain.model.Family
-                        isError = false
-                        message = "Joined \"${family?.name.orEmpty()}\"."
-                    }) {
-                        if (looksLikeCode) {
-                            families.redeemInvitation(familyIdToJoin.uppercase(), user.uid)
-                        } else {
-                            families.joinFamily(familyIdToJoin, user.uid)
-                        }
-                    }
-                    return
-                }
-                if (inviteCode.isBlank()) {
+                if (familyIdToJoin.isBlank()) {
                     isError = true
-                    message = "Paste the family ID, or enter an invitation code."
+                    message = "Paste the Family ID to join."
                     return
                 }
+                // The Family ID is the primary join key; a short code like ABCD-1234 also works.
+                val looksLikeCode = Regex("^[A-Z0-9]{4}-[A-Z0-9]{4}$")
+                    .matches(familyIdToJoin.uppercase())
                 run(onSuccess = { result ->
                     val family = result as? com.familyfinance.app.domain.model.Family
                     isError = false
                     message = "Joined \"${family?.name.orEmpty()}\"."
-                }) { families.redeemInvitation(inviteCode.trim(), user.uid) }
+                }) {
+                    if (looksLikeCode) {
+                        families.redeemInvitation(familyIdToJoin.uppercase(), user.uid)
+                    } else {
+                        families.joinFamily(familyIdToJoin, user.uid)
+                    }
+                }
             }
         }
     }
@@ -192,14 +184,8 @@ fun FamilySetupScreen(
                         PlainTextField(
                             value = viewModel.familyIdToJoin,
                             onValueChange = viewModel::onFamilyIdToJoin,
-                            label = "Family ID or invite code",
-                            supportingText = "Paste the Family ID (long) or a code like ABCD-1234",
-                        )
-                        PlainTextField(
-                            value = viewModel.inviteCode,
-                            onValueChange = viewModel::onInviteCode,
-                            label = "Invitation code (optional)",
-                            supportingText = "Format: ABCD-1234",
+                            label = "Family ID",
+                            supportingText = "Owner: Settings → Members → Family ID → Copy",
                         )
                         Card(
                             colors = CardDefaults.cardColors(

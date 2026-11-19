@@ -18,8 +18,8 @@ android {
         applicationId = "com.familyfinance.app"
         minSdk = 23
         targetSdk = 35
-        versionCode = 30
-        versionName = "2.14.0"
+        versionCode = 31
+        versionName = "2.15.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
