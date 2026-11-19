@@ -401,9 +401,13 @@ class FirebaseRemoteSyncEngine @Inject constructor(
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     AppLog.w("Aggregate listener error: %s", error.code)
+                    // Never leave the UI on an endless spinner.
+                    trySend(FamilyAggregate.empty(month))
                     return@addSnapshotListener
                 }
-                snapshot?.toFamilyAggregate(month)?.let { trySend(it) }
+                // The Cloud Function may not have written this month yet (or Functions are not
+                // deployed on the free plan). Emit zeros so Home/Reports render instead of hanging.
+                trySend(snapshot?.toFamilyAggregate(month) ?: FamilyAggregate.empty(month))
             }
         awaitClose { registration.remove() }
     }
