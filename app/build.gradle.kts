@@ -18,8 +18,8 @@ android {
         applicationId = "com.familyfinance.app"
         minSdk = 23
         targetSdk = 35
-        versionCode = 27
-        versionName = "2.11.0"
+        versionCode = 28
+        versionName = "2.12.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -53,8 +53,9 @@ android {
             isDebuggable = true
         }
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            // Minification off so a sideloaded release build is safe without extensive keep rules.
+            isMinifyEnabled = false
+            isShrinkResources = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
