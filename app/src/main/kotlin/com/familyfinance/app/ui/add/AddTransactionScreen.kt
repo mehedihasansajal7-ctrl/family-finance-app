@@ -3,6 +3,7 @@ package com.familyfinance.app.ui.add
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,13 +14,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -46,6 +50,7 @@ import com.familyfinance.app.core.time.AppTime
 import com.familyfinance.app.core.util.Ids
 import com.familyfinance.app.data.session.SessionManager
 import com.familyfinance.app.domain.model.Account
+import com.familyfinance.app.domain.model.AccountType
 import com.familyfinance.app.domain.model.ExpenseCategory
 import com.familyfinance.app.domain.model.IncomeCategory
 import com.familyfinance.app.domain.model.RecurrenceFrequency
@@ -153,6 +158,44 @@ class AddTransactionViewModel @Inject constructor(
     fun onDate(value: Long) { dateEpochDay = value }
     fun onCategory(value: String?) { categoryId = value }
     fun onAccount(value: String?) { accountId = value }
+
+    /**
+     * Quick method chips (Cash / bKash / Nagad …): select an existing account of that type, or create
+     * one on the spot so a brand-new member can record a transaction without setup.
+     */
+    fun selectMethod(typeId: String) {
+        val existing = accounts.value.firstOrNull { it.type.id == typeId }
+        if (existing != null) {
+            accountId = existing.id
+            return
+        }
+        val user = currentUser.value ?: return
+        val now = System.currentTimeMillis()
+        val name = when (typeId) {
+            "cash" -> "Cash"
+            "bkash" -> "bKash"
+            "nagad" -> "Nagad"
+            "rocket" -> "Rocket"
+            "upay" -> "Upay"
+            "bank" -> "Bank"
+            else -> "Account"
+        }
+        run(onSuccess = { result ->
+            (result as? Account)?.let { accountId = it.id }
+        }) {
+            accountRepository.upsertAccount(
+                Account(
+                    id = Ids.newId(),
+                    ownerUid = user.uid,
+                    familyId = user.familyId.orEmpty(),
+                    name = name,
+                    type = AccountType.fromId(typeId),
+                    createdAt = now,
+                    updatedAt = now,
+                )
+            )
+        }
+    }
     fun onFromAccount(value: String?) { fromAccountId = value }
     fun onToAccount(value: String?) { toAccountId = value }
     fun onNote(value: String) {
@@ -469,6 +512,16 @@ fun AddTransactionScreen(
                         optionLabel = { it.name },
                         onSelect = { viewModel.onAccount(it.id) },
                     )
+                    Text(
+                        "Or pick a method",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    QuickMethodRow(
+                        accounts = accounts,
+                        selectedAccountId = viewModel.accountId,
+                        onSelect = viewModel::selectMethod,
+                    )
                     if (accounts.isEmpty()) {
                         OutlinedButton(onClick = onManageAccounts) { Text("Add an account first") }
                     }
@@ -578,6 +631,46 @@ fun AddTransactionScreen(
             )
 
             Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+private val QUICK_METHODS = listOf(
+    "cash" to "Cash",
+    "bkash" to "bKash",
+    "nagad" to "Nagad",
+    "rocket" to "Rocket",
+    "upay" to "Upay",
+)
+
+/** Cash / bKash / Nagad style chips; tapping selects or creates that account. */
+@Composable
+private fun QuickMethodRow(
+    accounts: List<Account>,
+    selectedAccountId: String?,
+    onSelect: (String) -> Unit,
+) {
+    val selectedType = accounts.firstOrNull { it.id == selectedAccountId }?.type?.id
+    Row(
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        QUICK_METHODS.forEach { (id, label) ->
+            AssistChip(
+                onClick = { onSelect(id) },
+                label = { Text(label) },
+                leadingIcon = if (selectedType == id) {
+                    {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                } else {
+                    null
+                },
+            )
         }
     }
 }

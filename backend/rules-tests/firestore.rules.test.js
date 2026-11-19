@@ -470,28 +470,31 @@ describe("shared family data", () => {
 // The aggregate is server-written only
 // =============================================================================
 
-describe("aggregate write protection", () => {
-  it("blocks a member from writing an aggregate", async () => {
-    await assertFails(
-      setDoc(doc(alice(), "families", FAMILY, "aggregates", "2026-09"), {
-        month: "2026-09",
-        totalIncomeMinor: 999999999,
+describe("aggregate writes (client-maintained totals)", () => {
+  it("lets a member create the monthly aggregate for their family", async () => {
+    await assertSucceeds(
+      setDoc(doc(alice(), "families", FAMILY, "aggregates", "2026-11"), {
+        month: "2026-11",
+        totalIncomeMinor: 1000,
+        totalExpenseMinor: 500,
+        totalSavingsMinor: 500,
+        expenseByCategory: [],
       })
     );
   });
 
-  it("blocks an admin from writing an aggregate", async () => {
-    await assertFails(
-      setDoc(doc(carol(), "families", FAMILY, "aggregates", "2026-10"), {
-        month: "2026-10",
+  it("lets the owner update an existing aggregate", async () => {
+    await assertSucceeds(
+      updateDoc(doc(owner(), "families", FAMILY, "aggregates", "2026-09"), {
         totalIncomeMinor: 1,
       })
     );
   });
 
-  it("blocks the owner from writing an aggregate", async () => {
+  it("blocks an outsider from writing the aggregate", async () => {
     await assertFails(
-      updateDoc(doc(owner(), "families", FAMILY, "aggregates", "2026-09"), {
+      setDoc(doc(outsider(), "families", FAMILY, "aggregates", "2026-11"), {
+        month: "2026-11",
         totalIncomeMinor: 1,
       })
     );

@@ -74,6 +74,21 @@ interface RemoteSyncEngine {
 
     suspend fun fetchInviteCode(code: String): com.familyfinance.app.domain.model.InviteCode? = null
 
+    /**
+     * Adds a transaction's totals to the family's monthly aggregate. This is how the family dashboard
+     * stays correct on the free plan, where the Cloud Function that used to compute aggregates is not
+     * deployed. Only totals and per-category totals are written — never a member's private rows.
+     */
+    suspend fun incrementFamilyAggregate(
+        familyId: String,
+        dateEpochDay: Long,
+        incomeDeltaMinor: Long,
+        expenseDeltaMinor: Long,
+        categoryId: String?,
+        categoryDeltaMinor: Long,
+        memberCount: Int = 0,
+    ): Outcome<Unit> = Outcome.Success(Unit)
+
     suspend fun pushSplit(split: FamilyExpenseSplit): Outcome<Unit>
     suspend fun deleteSplit(familyId: String, splitId: String): Outcome<Unit>
     fun observeSplits(familyId: String): kotlinx.coroutines.flow.Flow<List<FamilyExpenseSplit>> =
@@ -130,6 +145,19 @@ interface RemoteSyncEngine {
      */
     fun observeFamilyAggregate(familyId: String, month: YearMonth): kotlinx.coroutines.flow.Flow<FamilyAggregate> =
         kotlinx.coroutines.flow.emptyFlow()
+
+    /**
+     * Writes the aggregate document only if it does not exist yet, so a member's existing
+     * transactions show up on the family dashboard the first time they open it.
+     */
+    suspend fun seedFamilyAggregate(
+        familyId: String,
+        month: YearMonth,
+        totalIncomeMinor: Long,
+        totalExpenseMinor: Long,
+        expenseByCategory: Map<String, Long>,
+        memberCount: Int,
+    ): Outcome<Unit> = Outcome.Success(Unit)
 
     /** Replays queued operations. Returns how many succeeded. */
     suspend fun drainQueue(ownerUid: String): Outcome<Int>

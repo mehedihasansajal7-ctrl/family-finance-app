@@ -39,6 +39,7 @@ import com.familyfinance.app.domain.usecase.FamilyAggregateCalculator
 import com.familyfinance.app.domain.usecase.MemberContributionSource
 import com.familyfinance.app.domain.usecase.PersonalSummaryCalculator
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import java.time.YearMonth
@@ -382,8 +383,30 @@ class FamilyFinanceRepositoryImpl @Inject constructor(
 ) : FamilyFinanceRepository {
 
     override fun observeAggregate(familyId: String, month: YearMonth): Flow<FamilyAggregate> {
-        if (engine.isConfigured) return engine.observeFamilyAggregate(familyId, month)
-        return flow { emit(computeLocalAggregate(familyId, month)) }
+        if (!engine.isConfigured) return flow { emit(computeLocalAggregate(familyId, month)) }
+        return flow {
+            // With no Cloud Function nothing had ever filled in an aggregate, so a family with
+            // existing transactions saw zeros on Home. Seed the caller's own totals once; the
+            // engine writes only when the document is still missing.
+            seedAggregateIfMissing(familyId, month)
+            emitAll(engine.observeFamilyAggregate(familyId, month))
+        }
+    }
+
+    private suspend fun seedAggregateIfMissing(familyId: String, month: YearMonth) {
+        runCatching {
+            val local = computeLocalAggregate(familyId, month)
+            val categories = local.expenseByCategory
+                .associate { it.categoryId to it.total.minor }
+            engine.seedFamilyAggregate(
+                familyId = familyId,
+                month = month,
+                totalIncomeMinor = local.totalIncome.minor,
+                totalExpenseMinor = local.totalExpense.minor,
+                expenseByCategory = categories,
+                memberCount = familyDao.members(familyId).size,
+            )
+        }
     }
 
     override fun observeBudgets(familyId: String): Flow<List<FamilyBudget>> =

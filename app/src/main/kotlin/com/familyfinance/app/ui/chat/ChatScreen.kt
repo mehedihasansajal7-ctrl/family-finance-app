@@ -92,16 +92,25 @@ class ChatViewModel @Inject constructor(
         .flatMapLatest { familyId -> if (familyId == null) emptyFlow() else chat.observeReads(familyId) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /**
+     * Collected eagerly: [send], [markRead] and friends read `.value` directly, and with
+     * `WhileSubscribed` nothing would ever start the upstream flow, leaving this null for ever —
+     * which silently dropped every message. `Eagerly` keeps the current family available.
+     */
     val familyId: StateFlow<String?> = session.currentUser
         .map { it?.familyId }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val currentUid: StateFlow<String?> = session.currentUser
         .map { it?.uid }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun send(text: String, replyTo: FamilyChatMessage?, onSuccess: () -> Unit) {
-        val family = familyId.value ?: return
+        val family = familyId.value
+        if (family == null) {
+            error("Join a family before sending a message.")
+            return
+        }
         run(onSuccess = { onSuccess() }) { chat.sendMessage(family, text, replyTo) }
     }
 

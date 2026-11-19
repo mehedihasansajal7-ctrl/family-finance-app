@@ -243,7 +243,10 @@ service cloud.firestore {
     // =========================================================================
     match /families/{familyId}/aggregates/{month} {
       allow read: if isMember(familyId);
-      allow write: if false;
+      // On the free plan there is no Cloud Function, so members maintain these totals client-side.
+      // The document holds aggregate numbers only — never any member's private rows.
+      allow create, update: if isMember(familyId);
+      allow delete: if false;
     }
 
     // ---------------------------------------------------------------- default deny

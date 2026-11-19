@@ -17,6 +17,7 @@ import com.familyfinance.app.domain.model.Account
 import com.familyfinance.app.domain.model.RecurringRule
 import com.familyfinance.app.domain.model.SyncState
 import com.familyfinance.app.domain.model.Transaction
+import com.familyfinance.app.domain.model.TransactionType
 import com.familyfinance.app.domain.repository.AccountRepository
 import com.familyfinance.app.domain.repository.RecurringRepository
 import com.familyfinance.app.domain.repository.TransactionFilter
@@ -113,6 +114,7 @@ class AccountRepositoryImpl @Inject constructor(
 class TransactionRepositoryImpl @Inject constructor(
     private val transactionDao: TransactionDao,
     private val accountDao: AccountDao,
+    private val familyDao: com.familyfinance.app.data.local.dao.FamilyDao,
     private val engine: RemoteSyncEngine,
     private val sync: SyncCoordinator,
     private val session: SessionManager,
@@ -161,7 +163,9 @@ class TransactionRepositoryImpl @Inject constructor(
             updatedAt = now,
             syncState = SyncState.PENDING,
         )
+        val previous = transactionDao.find(uid, prepared.id)?.toDomain()
         transactionDao.upsert(prepared.toEntity())
+        applyAggregateDelta(prepared.familyId, previous, prepared)
 
         if (engine.isConfigured) {
             val pushed = engine.pushTransaction(prepared)
@@ -177,12 +181,58 @@ class TransactionRepositoryImpl @Inject constructor(
 
     override suspend fun deleteTransaction(ownerUid: String, transactionId: String): Outcome<Unit> {
         if (session.currentUserOnce()?.uid != ownerUid) return Outcome.Failure(AppError.permission())
+        val previous = transactionDao.find(ownerUid, transactionId)?.toDomain()
         transactionDao.delete(ownerUid, transactionId)
+        previous?.let { applyAggregateDelta(it.familyId, it, null) }
         if (engine.isConfigured) {
             val pushed = engine.deleteTransaction(transactionId)
             if (pushed.isFailure) sync.enqueue(ownerUid, SyncOp.DELETE_TRANSACTION, transactionId)
         }
         return Outcome.Success(Unit)
+    }
+
+    /**
+     * Keeps the family's monthly aggregate in step with this member's transactions.
+     *
+     * Only totals (and per-category totals) are written, never another member's rows, so the privacy
+     * model is preserved. This is what makes the family dashboard work on the free plan, where the
+     * Cloud Function that used to compute aggregates is not deployed.
+     */
+    private suspend fun applyAggregateDelta(
+        familyId: String,
+        old: Transaction?,
+        new: Transaction?,
+    ) {
+        if (!engine.isConfigured || familyId.isBlank()) return
+
+        val members = runCatching { familyDao.members(familyId).size }.getOrDefault(0)
+
+        if (old != null) {
+            val income = old.type == TransactionType.INCOME
+            val expense = old.type == TransactionType.EXPENSE
+            engine.incrementFamilyAggregate(
+                familyId = familyId,
+                dateEpochDay = old.dateEpochDay,
+                incomeDeltaMinor = if (income) -old.amount.minor else 0L,
+                expenseDeltaMinor = if (expense) -old.amount.minor else 0L,
+                categoryId = if (expense) old.categoryId else null,
+                categoryDeltaMinor = if (expense) -old.amount.minor else 0L,
+                memberCount = members,
+            )
+        }
+        if (new != null) {
+            val income = new.type == TransactionType.INCOME
+            val expense = new.type == TransactionType.EXPENSE
+            engine.incrementFamilyAggregate(
+                familyId = familyId,
+                dateEpochDay = new.dateEpochDay,
+                incomeDeltaMinor = if (income) new.amount.minor else 0L,
+                expenseDeltaMinor = if (expense) new.amount.minor else 0L,
+                categoryId = if (expense) new.categoryId else null,
+                categoryDeltaMinor = if (expense) new.amount.minor else 0L,
+                memberCount = members,
+            )
+        }
     }
 
     override suspend fun syncPending(ownerUid: String): Outcome<Int> = sync.drain(ownerUid)

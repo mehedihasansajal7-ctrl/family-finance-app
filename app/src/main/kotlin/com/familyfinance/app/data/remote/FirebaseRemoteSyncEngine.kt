@@ -286,6 +286,101 @@ class FirebaseRemoteSyncEngine @Inject constructor(
             )
         }.getOrNull()
 
+    override suspend fun incrementFamilyAggregate(
+        familyId: String,
+        dateEpochDay: Long,
+        incomeDeltaMinor: Long,
+        expenseDeltaMinor: Long,
+        categoryId: String?,
+        categoryDeltaMinor: Long,
+        memberCount: Int,
+    ): Outcome<Unit> = guard(null) {
+        if (incomeDeltaMinor == 0L && expenseDeltaMinor == 0L && categoryDeltaMinor == 0L) return@guard Unit
+        val month = java.time.YearMonth.from(java.time.LocalDate.ofEpochDay(dateEpochDay))
+        val key = monthKey(month)
+        val ref = db.collection("families").document(familyId)
+            .collection(COL_AGGREGATES).document(key)
+
+        db.runTransaction { txn ->
+            val data = txn.get(ref).data.orEmpty()
+            fun long(key: String): Long = (data[key] as? Number)?.toLong() ?: 0L
+
+            val income = (long("totalIncomeMinor") + incomeDeltaMinor).coerceAtLeast(0L)
+            val expense = (long("totalExpenseMinor") + expenseDeltaMinor).coerceAtLeast(0L)
+            val categories = ((data["expenseByCategory"] as? List<*>) ?: emptyList<Any?>())
+                .mapNotNull { row ->
+                    val map = row as? Map<*, *> ?: return@mapNotNull null
+                    val id = map["categoryId"] as? String ?: return@mapNotNull null
+                    id to ((map["totalMinor"] as? Number)?.toLong() ?: 0L)
+                }
+                .toMap()
+                .toMutableMap()
+            if (!categoryId.isNullOrBlank() && categoryDeltaMinor != 0L) {
+                val next = (categories[categoryId] ?: 0L) + categoryDeltaMinor
+                if (next == 0L) categories.remove(categoryId) else categories[categoryId] = next
+            }
+            val existingMembers = (data["memberCount"] as? Number)?.toInt() ?: 0
+            val members = if (memberCount > 0) memberCount else maxOf(existingMembers, 1)
+
+            txn.set(
+                ref,
+                mapOf(
+                    "familyId" to familyId,
+                    "month" to key,
+                    "totalIncomeMinor" to income,
+                    "totalExpenseMinor" to expense,
+                    "totalSavingsMinor" to (income - expense),
+                    "memberCount" to members,
+                    "expenseByCategory" to categories.map { (id, total) ->
+                        mapOf("categoryId" to id, "totalMinor" to total)
+                    },
+                    "updatedAt" to time.nowMillis(),
+                ),
+            )
+        }.await()
+        Unit
+    }
+
+    /**
+     * First-run seed: with no Cloud Function there was nothing to fill in an aggregate, so a family
+     * that had transactions before this version saw zeros on Home. This writes the caller's own
+     * totals once, and only when the document is still absent, so it can never double count.
+     */
+    override suspend fun seedFamilyAggregate(
+        familyId: String,
+        month: YearMonth,
+        totalIncomeMinor: Long,
+        totalExpenseMinor: Long,
+        expenseByCategory: Map<String, Long>,
+        memberCount: Int,
+    ): Outcome<Unit> = guard(null) {
+        if (totalIncomeMinor == 0L && totalExpenseMinor == 0L) return@guard Unit
+        val key = monthKey(month)
+        val ref = db.collection("families").document(familyId)
+            .collection(COL_AGGREGATES).document(key)
+        db.runTransaction { txn ->
+            val existing = txn.get(ref)
+            if (!existing.exists()) {
+                txn.set(
+                    ref,
+                    mapOf(
+                        "familyId" to familyId,
+                        "month" to key,
+                        "totalIncomeMinor" to totalIncomeMinor,
+                        "totalExpenseMinor" to totalExpenseMinor,
+                        "totalSavingsMinor" to (totalIncomeMinor - totalExpenseMinor),
+                        "memberCount" to maxOf(memberCount, 1),
+                        "expenseByCategory" to expenseByCategory.map { (id, total) ->
+                            mapOf("categoryId" to id, "totalMinor" to total)
+                        },
+                        "updatedAt" to time.nowMillis(),
+                    ),
+                )
+            }
+        }.await()
+        Unit
+    }
+
     override fun observeChatReads(familyId: String): Flow<List<ChatReadState>> = callbackFlow {
         val registration = familyCollection(familyId, COL_CHAT_READS)
             ?.addSnapshotListener { snapshot, error ->
