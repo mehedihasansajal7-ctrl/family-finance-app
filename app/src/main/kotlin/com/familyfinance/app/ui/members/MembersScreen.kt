@@ -134,7 +134,7 @@ class MembersViewModel @Inject constructor(
         run(onSuccess = {
             _invitation.value = null
             info("Invitation revoked.")
-        }) { families.revokeInvitation(invitation.id) }
+        }) { families.revokeInvitation(invitation.id, invitation.code) }
     }
 
     fun changeRole(member: FamilyMemberView, role: Role) {
@@ -245,8 +245,8 @@ fun MembersScreen(
             invitation?.let { active ->
                 item {
                     SectionCard(
-                        title = "Invitation code (offline only)",
-                        subtitle = "To invite from another phone, share the Family ID above.",
+                        title = "Invitation code",
+                        subtitle = "Share this code — they join from their own phone.",
                     ) {
                         Text(
                             active.code,
@@ -264,8 +264,8 @@ fun MembersScreen(
                             TextButton(onClick = { viewModel.revoke(active) }) { Text("Revoke") }
                         }
                         Text(
-                            "The code only works on a device that already has this family's data " +
-                                "(offline/demo mode). A member on their own phone joins with the Family ID.",
+                            "The person opens Join a family and pastes this code. It is single-use and " +
+                                "can be revoked at any time. No financial data is shared when joining.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

@@ -27,6 +27,19 @@ data class ChatReadState(
     val lastReadAt: Long,
 )
 
+/**
+ * A public lookup record for an invitation code, so a member on another phone can resolve
+ * `CODE -> familyId` without a Cloud Function. Knowing the exact code is the secret.
+ */
+data class InviteCode(
+    val code: String,
+    val familyId: String,
+    val createdByUid: String,
+    val expiresAt: Long,
+    val maxUses: Int,
+    val usedCount: Int,
+)
+
 /** A shared family budget. Visibility is family-wide, but it is aggregate-only by construction. */
 data class FamilyBudget(
     val id: String,

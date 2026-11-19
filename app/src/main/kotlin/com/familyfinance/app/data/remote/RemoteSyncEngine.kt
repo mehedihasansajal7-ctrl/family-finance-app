@@ -63,6 +63,17 @@ interface RemoteSyncEngine {
     /** Reads a family document. Used right after joining, once membership has granted read access. */
     suspend fun fetchFamily(familyId: String): Family? = null
 
+    /** Publishes an invite code so another phone can resolve it (no Cloud Function needed). */
+    suspend fun pushInviteCode(invite: com.familyfinance.app.domain.model.InviteCode): Outcome<Unit> =
+        Outcome.Success(Unit)
+
+    suspend fun deleteInviteCode(code: String): Outcome<Unit> = Outcome.Success(Unit)
+
+    /** Marks a code as used (usedCount + 1). */
+    suspend fun redeemInviteCode(code: String): Outcome<Unit> = Outcome.Success(Unit)
+
+    suspend fun fetchInviteCode(code: String): com.familyfinance.app.domain.model.InviteCode? = null
+
     suspend fun pushSplit(split: FamilyExpenseSplit): Outcome<Unit>
     suspend fun deleteSplit(familyId: String, splitId: String): Outcome<Unit>
     fun observeSplits(familyId: String): kotlinx.coroutines.flow.Flow<List<FamilyExpenseSplit>> =

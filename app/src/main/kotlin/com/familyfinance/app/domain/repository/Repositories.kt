@@ -64,7 +64,7 @@ interface FamilyRepository {
         validForHours: Int,
     ): Outcome<FamilyInvitation>
 
-    suspend fun revokeInvitation(invitationId: String): Outcome<Unit>
+    suspend fun revokeInvitation(invitationId: String, code: String? = null): Outcome<Unit>
     suspend fun redeemInvitation(code: String, uid: String): Outcome<Family>
 
     /** Joins a family directly by its ID (the cross-device path that needs no Cloud Function). */

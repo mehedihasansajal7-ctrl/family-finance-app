@@ -169,6 +169,23 @@ service cloud.firestore {
       allow update, delete: if isAdmin(familyId);
     }
 
+    // ---- invite-code lookup, so a member on ANOTHER phone can join without a Cloud Function.
+    // Knowing the exact code is the secret: any signed-in user may GET one code, but LISTING is
+    // denied so codes cannot be enumerated. Only an admin of that family may mint a code, and any
+    // signed-in user may redeem one (usedCount + 1) — nothing else can be changed.
+    match /familyCodes/{code} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.createdByUid == me()
+        && isAdmin(request.resource.data.familyId);
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['usedCount'])
+        && request.resource.data.usedCount == resource.data.usedCount + 1;
+      allow delete: if signedIn()
+        && (resource.data.createdByUid == me() || isAdmin(resource.data.familyId));
+    }
+
     // ---- one family group chat: active members read/write, admins moderate
     match /families/{familyId}/chatMessages/{messageId} {
       allow read: if isMember(familyId);

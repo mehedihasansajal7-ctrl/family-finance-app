@@ -155,11 +155,25 @@ class FamilyRepositoryImpl @Inject constructor(
             invitedEmail = invitedEmail?.trim()?.takeIf { it.isNotBlank() },
         )
         familyDao.upsertInvitation(invitation.toEntity())
+        if (engine.isConfigured) {
+            // Publish the code so another phone can resolve CODE -> familyId (no Cloud Function).
+            engine.pushInviteCode(
+                com.familyfinance.app.domain.model.InviteCode(
+                    code = invitation.code,
+                    familyId = familyId,
+                    createdByUid = createdByUid,
+                    expiresAt = invitation.expiresAt,
+                    maxUses = invitation.maxUses,
+                    usedCount = 0,
+                )
+            )
+        }
         return Outcome.Success(invitation)
     }
 
-    override suspend fun revokeInvitation(invitationId: String): Outcome<Unit> {
+    override suspend fun revokeInvitation(invitationId: String, code: String?): Outcome<Unit> {
         familyDao.revokeInvitation(invitationId, time.nowMillis())
+        if (engine.isConfigured && !code.isNullOrBlank()) engine.deleteInviteCode(code)
         return Outcome.Success(Unit)
     }
 
@@ -169,35 +183,55 @@ class FamilyRepositoryImpl @Inject constructor(
         if (user.familyId != null) {
             return Outcome.Failure(AppError.conflict("You already belong to a family."))
         }
-        val invitation = familyDao.findInvitationByCode(code.trim().uppercase())?.toDomain()
-            ?: return Outcome.Failure(AppError.notFound("That invitation code is not valid."))
-        if (!invitation.isRedeemable(time.nowMillis())) {
-            return Outcome.Failure(AppError.validation("That invitation has expired or been revoked."))
-        }
-        val family = familyDao.find(invitation.familyId)?.toDomain()
-            ?: return Outcome.Failure(AppError.notFound("The family no longer exists."))
+        val normalized = code.trim().uppercase()
+        val now = time.nowMillis()
 
-        familyDao.upsertMember(
-            MemberProfileEntity(
-                uid = uid,
-                familyId = family.id,
-                fullName = user.displayName.ifBlank { user.email.substringBefore('@') },
-                photoUrl = user.photoUrl,
-                dateOfBirthEpochDay = null,
-                mobile = null,
-                email = user.email,
-                relationship = null,
-                occupation = null,
-                notes = null,
-                shareProfileWithFamily = true,
-                roleId = Role.MEMBER.id,
-                statusId = MemberStatus.ACTIVE.id,
-                updatedAt = time.nowMillis(),
+        // 1) Same-device invitation (offline / demo mode).
+        val invitation = familyDao.findInvitationByCode(normalized)?.toDomain()
+        if (invitation != null) {
+            if (!invitation.isRedeemable(now)) {
+                return Outcome.Failure(AppError.validation("That invitation has expired or been revoked."))
+            }
+            val family = familyDao.find(invitation.familyId)?.toDomain()
+                ?: return Outcome.Failure(AppError.notFound("The family no longer exists."))
+            familyDao.upsertMember(
+                MemberProfileEntity(
+                    uid = uid,
+                    familyId = family.id,
+                    fullName = user.displayName.ifBlank { user.email.substringBefore('@') },
+                    photoUrl = user.photoUrl,
+                    dateOfBirthEpochDay = null,
+                    mobile = null,
+                    email = user.email,
+                    relationship = null,
+                    occupation = null,
+                    notes = null,
+                    shareProfileWithFamily = true,
+                    roleId = Role.MEMBER.id,
+                    statusId = MemberStatus.ACTIVE.id,
+                    updatedAt = now,
+                )
             )
-        )
-        familyDao.incrementInvitationUse(invitation.id)
-        session.saveUser(user.copy(familyId = family.id, role = Role.MEMBER))
-        return Outcome.Success(family)
+            familyDao.incrementInvitationUse(invitation.id)
+            session.saveUser(user.copy(familyId = family.id, role = Role.MEMBER))
+            return Outcome.Success(family)
+        }
+
+        // 2) Another phone: resolve the public code lookup, then join normally.
+        if (!engine.isConfigured) {
+            return Outcome.Failure(AppError.notFound("That invitation code is not valid."))
+        }
+        val remote = engine.fetchInviteCode(normalized)
+            ?: return Outcome.Failure(AppError.notFound("That invitation code is not valid."))
+        if (remote.expiresAt > 0 && remote.expiresAt < now) {
+            return Outcome.Failure(AppError.validation("That invitation has expired."))
+        }
+        if (remote.maxUses > 0 && remote.usedCount >= remote.maxUses) {
+            return Outcome.Failure(AppError.validation("That code has already been used."))
+        }
+        val joined = joinFamily(remote.familyId, uid)
+        if (joined.isSuccess) engine.redeemInviteCode(normalized)
+        return joined
     }
 
     override suspend fun joinFamily(familyId: String, uid: String): Outcome<Family> {

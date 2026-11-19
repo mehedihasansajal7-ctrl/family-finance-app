@@ -27,6 +27,8 @@ const {
   doc,
   setDoc,
   getDoc,
+  getDocs,
+  collection,
   updateDoc,
   deleteDoc,
 } = require("firebase/firestore");
@@ -245,6 +247,53 @@ const owner = () => testEnv.authenticatedContext(OWNER).firestore();
 const outsider = () => testEnv.authenticatedContext(OUTSIDER).firestore();
 const suspended = () => testEnv.authenticatedContext("uid-suspended").firestore();
 const anonymous = () => testEnv.unauthenticatedContext().firestore();
+
+// =============================================================================
+// Invite-code lookup (cross-device joining without a Cloud Function)
+// =============================================================================
+
+describe("family invite codes", () => {
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "familyCodes", "ABCD-1234"), {
+        code: "ABCD-1234",
+        familyId: FAMILY,
+        createdByUid: OWNER,
+        expiresAt: Date.now() + 3600000,
+        maxUses: 1,
+        usedCount: 0,
+      });
+    });
+  });
+
+  it("lets a signed-in user resolve one exact code", async () => {
+    await assertSucceeds(getDoc(doc(alice(), "familyCodes", "ABCD-1234")));
+    await assertSucceeds(getDoc(doc(outsider(), "familyCodes", "ABCD-1234")));
+  });
+
+  it("denies listing and anonymous lookups", async () => {
+    await assertFails(getDocs(collection(alice(), "familyCodes")));
+    await assertFails(getDoc(doc(anonymous(), "familyCodes", "ABCD-1234")));
+  });
+
+  it("only an admin can mint a code", async () => {
+    await assertSucceeds(setDoc(doc(carol(), "familyCodes", "WXYZ-5678"), {
+      code: "WXYZ-5678", familyId: FAMILY, createdByUid: CAROL,
+      expiresAt: Date.now() + 3600000, maxUses: 1, usedCount: 0,
+    }));
+    await assertFails(setDoc(doc(alice(), "familyCodes", "MNOP-9012"), {
+      code: "MNOP-9012", familyId: FAMILY, createdByUid: ALICE,
+      expiresAt: Date.now() + 3600000, maxUses: 1, usedCount: 0,
+    }));
+  });
+
+  it("allows only a +1 usedCount update when redeeming", async () => {
+    await assertSucceeds(updateDoc(doc(alice(), "familyCodes", "ABCD-1234"), { usedCount: 1 }));
+    await assertFails(updateDoc(doc(alice(), "familyCodes", "ABCD-1234"), { usedCount: 3 }));
+    await assertFails(updateDoc(doc(alice(), "familyCodes", "ABCD-1234"), { maxUses: 99 }));
+  });
+});
 
 // =============================================================================
 // A member CAN manage their own data

@@ -244,6 +244,48 @@ class FirebaseRemoteSyncEngine @Inject constructor(
         )
     }.getOrNull()
 
+    override suspend fun pushInviteCode(
+        invite: com.familyfinance.app.domain.model.InviteCode,
+    ): Outcome<Unit> = guard(invite.createdByUid) {
+        db.collection(COL_FAMILY_CODES).document(invite.code).set(
+            mapOf(
+                "code" to invite.code,
+                "familyId" to invite.familyId,
+                "createdByUid" to invite.createdByUid,
+                "expiresAt" to invite.expiresAt,
+                "maxUses" to invite.maxUses,
+                "usedCount" to invite.usedCount,
+            ),
+            SetOptions.merge(),
+        ).await()
+        Unit
+    }
+
+    override suspend fun deleteInviteCode(code: String): Outcome<Unit> = guard(null) {
+        db.collection(COL_FAMILY_CODES).document(code).delete().await()
+        Unit
+    }
+
+    override suspend fun redeemInviteCode(code: String): Outcome<Unit> = guard(null) {
+        db.collection(COL_FAMILY_CODES).document(code)
+            .update("usedCount", com.google.firebase.firestore.FieldValue.increment(1)).await()
+        Unit
+    }
+
+    override suspend fun fetchInviteCode(code: String): com.familyfinance.app.domain.model.InviteCode? =
+        runCatching {
+            val snapshot = db.collection(COL_FAMILY_CODES).document(code).get().await()
+            if (!snapshot.exists()) return@runCatching null
+            com.familyfinance.app.domain.model.InviteCode(
+                code = snapshot.getString("code") ?: code,
+                familyId = snapshot.getString("familyId") ?: return@runCatching null,
+                createdByUid = snapshot.getString("createdByUid") ?: "",
+                expiresAt = snapshot.getLong("expiresAt") ?: 0L,
+                maxUses = (snapshot.getLong("maxUses") ?: 1L).toInt(),
+                usedCount = (snapshot.getLong("usedCount") ?: 0L).toInt(),
+            )
+        }.getOrNull()
+
     override fun observeChatReads(familyId: String): Flow<List<ChatReadState>> = callbackFlow {
         val registration = familyCollection(familyId, COL_CHAT_READS)
             ?.addSnapshotListener { snapshot, error ->
@@ -460,6 +502,7 @@ class FirebaseRemoteSyncEngine @Inject constructor(
         private const val COL_CHAT_READS = "chatReads"
         private const val COL_SPLITS = "splits"
         private const val COL_SETTLEMENTS = "settlements"
+        private const val COL_FAMILY_CODES = "familyCodes"
     }
 }
 
